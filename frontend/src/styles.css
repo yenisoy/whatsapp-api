@@ -1,0 +1,304 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f4f6ff;
+  --surface: #ffffff;
+  --surface-soft: #f8faff;
+  --text: #0f172a;
+  --muted: #5b647a;
+  --border: #d9e1f5;
+  --primary: #4f46e5;
+  --primary-2: #7c3aed;
+  --success: #0f9f6e;
+  --danger: #dc2626;
+  --warning: #f59e0b;
+  --shadow: 0 10px 30px rgba(79, 70, 229, 0.12);
+}
+
+body {
+  margin: 0;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1,
+h2,
+h3,
+p,
+span,
+li,
+label {
+  color: var(--text);
+}
+
+.app-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 10% -20%, #dbeafe 0%, transparent 35%),
+    radial-gradient(circle at 90% 0%, #ede9fe 0%, transparent 38%),
+    var(--bg);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #ffffff 0%, #eef2ff 100%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 44px;
+  letter-spacing: 0.2px;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.18s ease;
+}
+
+.tab:hover {
+  transform: translateY(-1px);
+  border-color: #c7d2fe;
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.12);
+}
+
+.tab.active {
+  background: linear-gradient(120deg, var(--primary) 0%, var(--primary-2) 100%);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 10px 20px rgba(79, 70, 229, 0.28);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+}
+
+.card h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.form {
+  display: grid;
+  gap: 10px;
+}
+
+input,
+textarea,
+select,
+button {
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font: inherit;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8b95ab;
+}
+
+button {
+  background: linear-gradient(120deg, var(--primary) 0%, var(--primary-2) 100%);
+  border-color: transparent;
+  color: white;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.18s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.25);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  gap: 10px;
+  background: #ffffff;
+}
+
+.links {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.links a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.links a:hover {
+  text-decoration: underline;
+}
+
+.info {
+  margin-top: 10px;
+  background: linear-gradient(180deg, #f3f6ff 0%, #eef2ff 100%);
+  color: #1e293b;
+  border: 1px solid #dbe3ff;
+  border-radius: 10px;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+
+.hint {
+  color: var(--muted);
+}
+
+.template-list li.template-item {
+  display: block;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+  border: 1px solid transparent;
+}
+
+.status-approved {
+  background: var(--success);
+  border-color: var(--success);
+  color: #ffffff;
+}
+
+.status-pending {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #9a3412;
+}
+
+.status-rejected {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #ffffff;
+}
+
+.contact-select-list {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px;
+  background: var(--surface-soft);
+}
+
+.contact-select-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 6px;
+}
+
+.contact-select-item:hover {
+  background: #e9eeff;
+}
+
+.contact-select-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 900px) {
+  .app-container {
+    padding: 16px;
+  }
+
+  .header h1 {
+    font-size: 32px;
+  }
+
+  .two-col,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
