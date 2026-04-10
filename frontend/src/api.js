@@ -133,6 +133,56 @@ export const api = {
     return true;
   },
 
+  async downloadContactsExport({ format = "csv", q = "", tags = [] } = {}) {
+    const params = new URLSearchParams();
+
+    params.set("format", format);
+
+    if (q) {
+      params.set("q", q);
+    }
+
+    if (Array.isArray(tags) && tags.length > 0) {
+      params.set("tags", tags.join(","));
+    }
+
+    const response = await fetch(`${API_BASE_URL}/contacts/export?${params.toString()}`, {
+      headers: buildHeaders()
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      let message = `Request failed with ${response.status}`;
+
+      if (text) {
+        try {
+          const data = JSON.parse(text);
+          message = data?.message || message;
+        } catch {
+          message = text;
+        }
+      }
+
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get("content-disposition") || "";
+    const fileNameMatch = /filename=([^;]+)/i.exec(contentDisposition);
+    const fileName = fileNameMatch?.[1]?.replaceAll('"', "") || `contacts-export.${format === "xlsx" || format === "xls" ? "xlsx" : "csv"}`;
+
+    const downloadUrl = globalThis.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    globalThis.URL.revokeObjectURL(downloadUrl);
+
+    return true;
+  },
+
   async getTemplates(options = {}) {
     const syncMeta = options?.syncMeta ? "?syncMeta=true" : "";
     const response = await fetch(`${API_BASE_URL}/templates${syncMeta}`, {

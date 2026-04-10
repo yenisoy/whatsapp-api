@@ -4,6 +4,7 @@ import {
   createContact,
   deleteContact,
   downloadImportTemplate,
+  exportContacts,
   getContacts,
   importContacts
 } from "../controllers/contact.controller.js";
@@ -17,5 +18,6 @@ router.get("/", getContacts);
 router.delete("/:id", deleteContact);
 router.post("/import", upload.single("file"), importContacts);
 router.get("/import/template", downloadImportTemplate);
+router.get("/export", exportContacts);
 
 export default router;

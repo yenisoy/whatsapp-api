@@ -6,8 +6,12 @@ services:
     container_name: whatsapp-backend
     env_file:
       - .env
+    command: npm run dev
     ports:
       - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       - mongo
       - redis
@@ -21,7 +25,10 @@ services:
     container_name: whatsapp-worker
     env_file:
       - .env
-    command: npm run start:worker
+    command: npm run dev:worker
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       - mongo
       - redis
@@ -35,8 +42,15 @@ services:
     container_name: whatsapp-frontend
     env_file:
       - .env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_HOST=0.0.0.0
+      - VITE_PORT=3000
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
     networks:

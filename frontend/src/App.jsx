@@ -17,6 +17,7 @@ const defaultLogin = { username: "", password: "" };
 const defaultNewUser = { username: "", password: "", role: "user" };
 const defaultSingleSendForm = { contactId: "", phone: "", templateId: "", mediaUrl: "", variablesJson: '{"name":"Ahmet"}' };
 const defaultGroupSendForm = { templateId: "", mediaUrl: "", variablesJson: '{"name":"Ahmet"}', contactIds: [] };
+const contactPageSizeOptions = [10, 50, 100, 1000, 10000];
 
 const formatError = (error) => error?.message || "Beklenmeyen bir hata oluştu";
 
@@ -73,7 +74,10 @@ function App() { // NOSONAR
   const [contactForm, setContactForm] = useState(defaultContact);
   const [contactQuery, setContactQuery] = useState("");
   const [importResult, setImportResult] = useState("");
+  const [contactActionResult, setContactActionResult] = useState("");
   const [contactTagFilters, setContactTagFilters] = useState([]);
+  const [contactPage, setContactPage] = useState(1);
+  const [contactPageSize, setContactPageSize] = useState(10);
 
   const [templates, setTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -178,14 +182,40 @@ function App() { // NOSONAR
   }
 
   const filteredContacts = useMemo(() => {
-    if (contactTagFilters.length === 0) {
-      return contacts;
-    }
+    const normalizedQuery = contactQuery.trim().toLowerCase();
 
-    return contacts.filter((contact) => contactTagFilters.includes(contact?.tag?.trim()));
-  }, [contactTagFilters, contacts]);
+    return contacts.filter((contact) => {
+      const matchesTags = contactTagFilters.length === 0 || contactTagFilters.includes(contact?.tag?.trim());
+
+      if (!matchesTags) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const haystack = [contact?.name, contact?.phone, contact?.tag]
+        .map((value) => String(value || "").toLowerCase())
+        .join(" ");
+
+      return haystack.includes(normalizedQuery);
+    });
+  }, [contactQuery, contactTagFilters, contacts]);
+
+  const contactTotalPages = Math.max(1, Math.ceil(filteredContacts.length / contactPageSize));
+  const safeContactPage = Math.min(contactPage, contactTotalPages);
+
+  const paginatedContacts = useMemo(() => {
+    const start = (safeContactPage - 1) * contactPageSize;
+    return filteredContacts.slice(start, start + contactPageSize);
+  }, [contactPageSize, filteredContacts, safeContactPage]);
 
   const isMediaHeaderTemplate = (template) => ["image", "video", "document"].includes(String(template?.headerType || "").toLowerCase());
+
+  useEffect(() => {
+    setContactPage(1);
+  }, [contactQuery, contactTagFilters, contactPageSize]);
 
   const loadHealth = async () => {
     try {
@@ -344,25 +374,27 @@ function App() { // NOSONAR
     try {
       await api.createContact(contactForm);
       setContactForm(defaultContact);
-      await loadContacts(contactQuery);
+      await loadContacts();
+      setContactActionResult("Contact eklendi");
     } catch (error) {
-      setImportResult(formatError(error));
+      setContactActionResult(formatError(error));
     }
   };
 
   const onDeleteContact = async (id) => {
     try {
       await api.deleteContact(id);
-      await loadContacts(contactQuery);
+      await loadContacts();
+      setContactActionResult("Contact silindi");
     } catch (error) {
-      setImportResult(formatError(error));
+      setContactActionResult(formatError(error));
     }
   };
 
   const onClearContactSearch = async () => {
     setContactQuery("");
     setContactTagFilters([]);
-    await loadContacts("");
+    setContactPage(1);
   };
 
   const onToggleContactTag = (tag) => {
@@ -377,14 +409,27 @@ function App() { // NOSONAR
     setContactTagFilters([]);
   };
 
+  const onExportContacts = async (format) => {
+    try {
+      await api.downloadContactsExport({
+        format,
+        q: contactQuery.trim(),
+        tags: contactTagFilters
+      });
+      setContactActionResult(`${format.toUpperCase()} dışa aktarım tamamlandı`);
+    } catch (error) {
+      setContactActionResult(formatError(error));
+    }
+  };
+
   let contactListContent;
 
   if (contactsLoading) {
     contactListContent = <div className="empty-state"><p>Yükleniyor...</p></div>;
-  } else if (filteredContacts.length > 0) {
+  } else if (paginatedContacts.length > 0) {
     contactListContent = (
       <ul className="list contact-list">
-        {filteredContacts.map((item) => (
+        {paginatedContacts.map((item) => (
           <li key={item._id} className="contact-list-item">
             <div className="contact-avatar" style={getContactAvatarStyle(item)} aria-hidden="true">
               {getContactInitials(item)}
@@ -439,7 +484,7 @@ function App() { // NOSONAR
     try {
       const result = await api.importContacts(file);
       setImportResult(`Import tamamlandı: ${result.imported} satır işlendi`);
-      await loadContacts(contactQuery);
+      await loadContacts();
     } catch (error) {
       setImportResult(formatError(error));
     } finally {
@@ -845,7 +890,11 @@ function App() { // NOSONAR
                   <h3>Kişiler</h3>
                   <p>{contactListSubtitle}</p>
                 </div>
-                <span className="list-count-badge">{filteredContacts.length} / {contacts.length} kayıt</span>
+                <div className="list-header-actions">
+                  <span className="list-count-badge">{filteredContacts.length} / {contacts.length} kayıt</span>
+                  <button type="button" className="secondary-action tiny-action" onClick={() => onExportContacts("csv")} disabled={filteredContacts.length === 0}>CSV Dışa Aktar</button>
+                  <button type="button" className="secondary-action tiny-action" onClick={() => onExportContacts("xlsx")} disabled={filteredContacts.length === 0}>Excel Dışa Aktar</button>
+                </div>
               </div>
 
               <div className="tag-filter-box">
@@ -884,11 +933,29 @@ function App() { // NOSONAR
                   value={contactQuery}
                   onChange={(event) => setContactQuery(event.target.value)}
                 />
-                <button type="button" onClick={() => loadContacts(contactQuery)}>Filtrele</button>
-                <button type="button" className="secondary-action" onClick={onClearContactSearch} disabled={!contactQuery && contactTagFilters.length === 0 && contacts.length === 0}>Temizle</button>
+                <button type="button" className="secondary-action" onClick={onClearContactSearch} disabled={!contactQuery && contactTagFilters.length === 0}>Temizle</button>
+              </div>
+
+              <div className="pagination-toolbar">
+                <div className="page-size-control">
+                  <span>Sayfa başına</span>
+                  <select value={contactPageSize} onChange={(event) => setContactPageSize(Number(event.target.value))}>
+                    {contactPageSizeOptions.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="pagination-actions">
+                  <button type="button" className="secondary-action tiny-action" onClick={() => setContactPage((current) => Math.max(1, current - 1))} disabled={safeContactPage <= 1}>Önceki</button>
+                  <span className="page-indicator">{safeContactPage} / {contactTotalPages}</span>
+                  <button type="button" className="secondary-action tiny-action" onClick={() => setContactPage((current) => Math.min(contactTotalPages, current + 1))} disabled={safeContactPage >= contactTotalPages}>Sonraki</button>
+                </div>
               </div>
 
               {contactListContent}
+
+              {contactActionResult && <p className="info contact-feedback">{contactActionResult}</p>}
             </div>
           </div>
         </section>

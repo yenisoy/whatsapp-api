@@ -6,9 +6,9 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
+    "dev": "nodemon --legacy-watch src/app.js",
     "start:worker": "node src/workers/batch.worker.js",
-    "dev:worker": "nodemon src/workers/batch.worker.js"
+    "dev:worker": "nodemon --legacy-watch src/workers/batch.worker.js"
   },
   "dependencies": {
     "axios": "^1.14.0",

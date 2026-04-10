@@ -6,6 +6,43 @@ const allowedHeaders = ["name", "phone", "tag"];
 
 const normalizePhone = (phone) => String(phone || "").replaceAll(/\D/g, "").trim();
 
+const buildContactFilter = ({ ownerId, tag = "", tags = "", q = "" }) => {
+  const filter = { ownerId };
+
+  const normalizedSingleTag = String(tag || "").trim();
+  const normalizedTags = String(tags || "")
+    .split(",")
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+
+  if (normalizedTags.length > 0) {
+    filter.tag = { $in: normalizedTags };
+  } else if (normalizedSingleTag) {
+    filter.tag = normalizedSingleTag;
+  }
+
+  const normalizedQuery = String(q || "").trim();
+
+  if (normalizedQuery) {
+    filter.$or = [
+      { name: { $regex: normalizedQuery, $options: "i" } },
+      { phone: { $regex: normalizedQuery, $options: "i" } },
+      { tag: { $regex: normalizedQuery, $options: "i" } }
+    ];
+  }
+
+  return filter;
+};
+
+const escapeCsvValue = (value) => {
+  const text = String(value ?? "");
+  if (/[",\n\r]/.test(text)) {
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+
+  return text;
+};
+
 const mapToContact = (row) => {
   const name = String(row.name || "").trim();
   const phone = normalizePhone(row.phone);
@@ -89,22 +126,12 @@ export const createContact = async (req, res, next) => {
 
 export const getContacts = async (req, res, next) => {
   try {
-    const { tag, q } = req.query;
-    const filter = {
-      ownerId: req.user.id
-    };
-
-    if (tag) {
-      filter.tag = tag;
-    }
-
-    if (q) {
-      filter.$or = [
-        { name: { $regex: q, $options: "i" } },
-        { phone: { $regex: q, $options: "i" } },
-        { tag: { $regex: q, $options: "i" } }
-      ];
-    }
+    const filter = buildContactFilter({
+      ownerId: req.user.id,
+      tag: req.query?.tag,
+      tags: req.query?.tags,
+      q: req.query?.q
+    });
 
     const contacts = await Contact.find(filter).sort({ createdAt: -1 });
     return res.json(contacts);
@@ -220,6 +247,65 @@ export const downloadImportTemplate = async (req, res, next) => {
     res.setHeader(
       "Content-Disposition",
       "attachment; filename=contact-import-template.csv"
+    );
+
+    return res.status(200).send(csvContent);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const exportContacts = async (req, res, next) => {
+  try {
+    const format = String(req.query.format || "csv").toLowerCase();
+    const filter = buildContactFilter({
+      ownerId: req.user.id,
+      tag: req.query?.tag,
+      tags: req.query?.tags,
+      q: req.query?.q
+    });
+
+    const contacts = await Contact.find(filter).sort({ createdAt: -1 }).lean();
+    const rows = contacts.map((contact) => ({
+      name: String(contact.name || "").trim(),
+      phone: String(contact.phone || "").trim(),
+      tag: String(contact.tag || "").trim()
+    }));
+
+    if (format === "xlsx" || format === "xls") {
+      const workbook = xlsx.utils.book_new();
+      const worksheet = xlsx.utils.json_to_sheet(rows, {
+        header: allowedHeaders
+      });
+      xlsx.utils.book_append_sheet(workbook, worksheet, "contacts");
+
+      const buffer = xlsx.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx"
+      });
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=contacts-export.xlsx"
+      );
+
+      return res.status(200).send(buffer);
+    }
+
+    const csvHeader = `${allowedHeaders.join(",")}\n`;
+    const csvBody = rows
+      .map((row) => [row.name, row.phone, row.tag].map(escapeCsvValue).join(","))
+      .join("\n");
+    const csvContent = `${csvHeader}${csvBody}${rows.length ? "\n" : ""}`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=contacts-export.csv"
     );
 
     return res.status(200).send(csvContent);
