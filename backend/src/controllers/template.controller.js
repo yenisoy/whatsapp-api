@@ -5,11 +5,12 @@ import {
   publishTemplateToMeta,
   uploadTemplateMediaToMeta
 } from "../services/meta-template.service.js";
+import { normalizeLanguageCode } from "../utils/normalize-language-code.js";
 import { extractTemplateVariables } from "../utils/template-variables.js";
 
 const mapTemplatePayload = (payload = {}) => {
   const name = String(payload.name || "").trim();
-  const language = String(payload.language || "tr").trim().toLowerCase();
+  const language = normalizeLanguageCode(payload.language || "tr");
   const category = String(payload.category || "UTILITY").trim().toUpperCase();
   const headerType = String(payload.headerType || "none").trim().toLowerCase();
   const headerText = String(payload.headerText || "").trim();
@@ -57,12 +58,7 @@ const getLocalStatusFromMetaStatus = (metaStatus = "") => {
 };
 
 const normalizeTemplateLanguage = (language = "") => {
-  const normalized = String(language || "").trim().toLowerCase();
-  if (["tr", "en"].includes(normalized)) {
-    return normalized;
-  }
-
-  return "en";
+  return normalizeLanguageCode(language || "tr");
 };
 
 const extractMetaBodyText = (components = []) => {

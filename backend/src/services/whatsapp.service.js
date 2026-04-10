@@ -1,4 +1,5 @@
 import axios from "axios";
+import { normalizeLanguageCode } from "../utils/normalize-language-code.js";
 
 const getCloudApiConfig = (credentials = {}) => {
   const token = credentials.whatsappToken || process.env.WHATSAPP_TOKEN;
@@ -138,7 +139,7 @@ export const sendWhatsAppMedia = async ({ phone, mediaType, mediaUrl, credential
 export const sendWhatsAppTemplate = async ({ phone, templateName, language = "tr", components = [], credentials = {} }) => {
   const config = getCloudApiConfig(credentials);
   const name = String(templateName || "").trim();
-  const languageCode = String(language || "tr").trim().toLowerCase() || "tr";
+  const languageCode = normalizeLanguageCode(language || "tr");
   const componentList = Array.isArray(components) ? components : [];
   const requestBody = {
     messaging_product: "whatsapp",
