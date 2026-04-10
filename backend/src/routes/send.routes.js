@@ -1,9 +1,9 @@
 import express from "express";
-import { sendBulkMessage, sendSingleMessage } from "../controllers/send.controller.js";
+import { sendBatchMessage, sendSingleMessage } from "../controllers/send.controller.js";
 
 const router = express.Router();
 
 router.post("/", sendSingleMessage);
-router.post("/bulk", sendBulkMessage);
+router.post("/batch", sendBatchMessage);
 
 export default router;

@@ -158,7 +158,7 @@ export const importContacts = async (req, res, next) => {
       return res.status(400).json({ message: "file has no valid rows" });
     }
 
-    const bulkOps = contacts.map((contact) => ({
+    const upsertOps = contacts.map((contact) => ({
       updateOne: {
         filter: { ownerId: req.user.id, phone: contact.phone },
         update: {
@@ -171,7 +171,7 @@ export const importContacts = async (req, res, next) => {
       }
     }));
 
-    const result = await Contact.bulkWrite(bulkOps, { ordered: false });
+    const result = await Contact.bulkWrite(upsertOps, { ordered: false });
 
     return res.status(200).json({
       imported: contacts.length,

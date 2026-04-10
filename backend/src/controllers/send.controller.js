@@ -1,6 +1,6 @@
 import Contact from "../models/contact.model.js";
 import Template from "../models/template.model.js";
-import { enqueueBulkSendJob } from "../queues/send-bulk.queue.js";
+import { enqueueBatchSendJob } from "../queues/send-batch.queue.js";
 import { sendWithTemplate } from "../services/message-send.service.js";
 
 export const sendSingleMessage = async (req, res, next) => {
@@ -48,7 +48,7 @@ export const sendSingleMessage = async (req, res, next) => {
   }
 };
 
-export const sendBulkMessage = async (req, res, next) => {
+export const sendBatchMessage = async (req, res, next) => {
   try {
     const { contactIds = [], templateId, variables = {}, mediaUrl = "" } = req.body;
 
@@ -74,7 +74,7 @@ export const sendBulkMessage = async (req, res, next) => {
     const jobs = [];
 
     for (const contact of contacts) {
-      const job = await enqueueBulkSendJob({
+      const job = await enqueueBatchSendJob({
         userId: req.user.id,
         ownerId: req.user.id,
         contactId: contact._id,

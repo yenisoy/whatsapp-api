@@ -5,9 +5,9 @@ const getRedisConnection = () => ({
   port: Number(process.env.REDIS_PORT || 6379)
 });
 
-export const SEND_BULK_QUEUE_NAME = "send-bulk";
+export const SEND_BATCH_QUEUE_NAME = "send-batch";
 
-export const sendBulkQueue = new Queue(SEND_BULK_QUEUE_NAME, {
+export const sendBatchQueue = new Queue(SEND_BATCH_QUEUE_NAME, {
   connection: getRedisConnection(),
   defaultJobOptions: {
     attempts: 2,
@@ -16,8 +16,8 @@ export const sendBulkQueue = new Queue(SEND_BULK_QUEUE_NAME, {
   }
 });
 
-export const enqueueBulkSendJob = async (payload) => {
-  return sendBulkQueue.add("send-one", payload);
+export const enqueueBatchSendJob = async (payload) => {
+  return sendBatchQueue.add("send-one", payload);
 };
 
 export const getQueueConnection = getRedisConnection;

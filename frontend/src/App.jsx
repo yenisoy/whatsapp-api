@@ -16,7 +16,7 @@ const defaultTemplateForm = {
 const defaultLogin = { username: "", password: "" };
 const defaultNewUser = { username: "", password: "", role: "user" };
 const defaultSingleSendForm = { contactId: "", phone: "", templateId: "", mediaUrl: "", variablesJson: '{"name":"Ahmet"}' };
-const defaultBulkSendForm = { templateId: "", mediaUrl: "", variablesJson: '{"name":"Ahmet"}', contactIds: [] };
+const defaultBatchSendForm = { templateId: "", mediaUrl: "", variablesJson: '{"name":"Ahmet"}', contactIds: [] };
 
 const formatError = (error) => error?.message || "Beklenmeyen bir hata oluştu";
 
@@ -52,7 +52,7 @@ function App() {
   const [templateMediaUploading, setTemplateMediaUploading] = useState(false);
 
   const [singleSendForm, setSingleSendForm] = useState(defaultSingleSendForm);
-  const [bulkSendForm, setBulkSendForm] = useState(defaultBulkSendForm);
+  const [batchSendForm, setBatchSendForm] = useState(defaultBatchSendForm);
   const [sendResult, setSendResult] = useState("");
 
   const [logsResult, setLogsResult] = useState("");
@@ -103,9 +103,9 @@ function App() {
     [templates, singleSendForm.templateId]
   );
 
-  const selectedBulkTemplate = useMemo(
-    () => templates.find((item) => item._id === bulkSendForm.templateId) || null,
-    [templates, bulkSendForm.templateId]
+  const selectedBatchTemplate = useMemo(
+    () => templates.find((item) => item._id === batchSendForm.templateId) || null,
+    [templates, batchSendForm.templateId]
   );
 
   const isMediaHeaderTemplate = (template) => ["image", "video", "document"].includes(String(template?.headerType || "").toLowerCase());
@@ -256,7 +256,7 @@ function App() {
     setContacts([]);
     setTemplates([]);
     setSingleSendForm(defaultSingleSendForm);
-    setBulkSendForm(defaultBulkSendForm);
+    setBatchSendForm(defaultBatchSendForm);
     setUsers([]);
     setActiveTab("dashboard");
   };
@@ -372,8 +372,8 @@ function App() {
     }
   };
 
-  const onToggleBulkContact = (contactId) => {
-    setBulkSendForm((current) => {
+  const onToggleBatchContact = (contactId) => {
+    setBatchSendForm((current) => {
       const exists = current.contactIds.includes(contactId);
       return {
         ...current,
@@ -384,15 +384,15 @@ function App() {
     });
   };
 
-  const onSelectAllBulkContacts = () => {
-    setBulkSendForm((current) => ({
+  const onSelectAllBatchContacts = () => {
+    setBatchSendForm((current) => ({
       ...current,
       contactIds: contacts.map((item) => item._id)
     }));
   };
 
-  const onClearBulkContacts = () => {
-    setBulkSendForm((current) => ({
+  const onClearBatchContacts = () => {
+    setBatchSendForm((current) => ({
       ...current,
       contactIds: []
     }));
@@ -425,25 +425,25 @@ function App() {
     }
   };
 
-  const onSendBulkMessage = async (event) => {
+  const onSendBatchMessage = async (event) => {
     event.preventDefault();
     setSendResult("");
 
     try {
-      if (!bulkSendForm.contactIds.length) {
+      if (!batchSendForm.contactIds.length) {
         setSendResult("Toplu gönderim için en az bir contact seçin");
         return;
       }
 
-      const variables = JSON.parse(bulkSendForm.variablesJson || "{}");
+      const variables = JSON.parse(batchSendForm.variablesJson || "{}");
       const payload = {
-        contactIds: bulkSendForm.contactIds,
-        templateId: bulkSendForm.templateId,
-        mediaUrl: bulkSendForm.mediaUrl,
+        contactIds: batchSendForm.contactIds,
+        templateId: batchSendForm.templateId,
+        mediaUrl: batchSendForm.mediaUrl,
         variables
       };
 
-      const response = await api.sendBulk(payload);
+      const response = await api.sendBatch(payload);
       setSendResult(JSON.stringify(response, null, 2));
       await loadMessageStats();
     } catch (error) {
@@ -542,7 +542,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>WhatsApp Bulk Messaging</h1>
+        <h1>WhatsApp Toplu Mesajlaşma</h1>
         <div className="row">
           <p>
             {currentUser.username} ({currentUser.role}) • Backend: {backendStatusLabel}
@@ -784,37 +784,37 @@ function App() {
 
           <div>
             <h2>Toplu Gönderim</h2>
-            <form onSubmit={onSendBulkMessage} className="form">
-              <select value={bulkSendForm.templateId} onChange={(event) => setBulkSendForm({ ...bulkSendForm, templateId: event.target.value })} required>
+            <form onSubmit={onSendBatchMessage} className="form">
+              <select value={batchSendForm.templateId} onChange={(event) => setBatchSendForm({ ...batchSendForm, templateId: event.target.value })} required>
                 <option value="">Template seç</option>
                 {templates.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
               </select>
-              {isMediaHeaderTemplate(selectedBulkTemplate) && (
+              {isMediaHeaderTemplate(selectedBatchTemplate) && (
                 <input
                   placeholder="Media URL (header image/video/document için zorunlu)"
-                  value={bulkSendForm.mediaUrl}
-                  onChange={(event) => setBulkSendForm({ ...bulkSendForm, mediaUrl: event.target.value })}
+                  value={batchSendForm.mediaUrl}
+                  onChange={(event) => setBatchSendForm({ ...batchSendForm, mediaUrl: event.target.value })}
                   required
                 />
               )}
-              <textarea value={bulkSendForm.variablesJson} onChange={(event) => setBulkSendForm({ ...bulkSendForm, variablesJson: event.target.value })} />
+              <textarea value={batchSendForm.variablesJson} onChange={(event) => setBatchSendForm({ ...batchSendForm, variablesJson: event.target.value })} />
               <div className="row">
-                <button type="button" onClick={onSelectAllBulkContacts}>Tümünü Seç</button>
-                <button type="button" onClick={onClearBulkContacts}>Seçimi Temizle</button>
+                <button type="button" onClick={onSelectAllBatchContacts}>Tümünü Seç</button>
+                <button type="button" onClick={onClearBatchContacts}>Seçimi Temizle</button>
               </div>
               <div className="list contact-select-list">
                 {contacts.map((item) => (
                   <label key={item._id} className="contact-select-item">
                     <input
                       type="checkbox"
-                      checked={bulkSendForm.contactIds.includes(item._id)}
-                      onChange={() => onToggleBulkContact(item._id)}
+                      checked={batchSendForm.contactIds.includes(item._id)}
+                      onChange={() => onToggleBatchContact(item._id)}
                     />
                     <span>{item.name || "-"} • {item.phone}</span>
                   </label>
                 ))}
               </div>
-              <button type="submit">Toplu Gönder ({bulkSendForm.contactIds.length})</button>
+              <button type="submit">Toplu Gönder ({batchSendForm.contactIds.length})</button>
             </form>
             {sendResult && <pre className="info">{sendResult}</pre>}
           </div>

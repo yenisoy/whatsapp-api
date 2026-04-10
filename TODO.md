@@ -1,4 +1,4 @@
-# WhatsApp Bulk Messaging SaaS - Takip Dokümanı
+# WhatsApp Toplu Mesajlaşma SaaS - Takip Dokümanı
 
 Bu dosya, geliştirme sürecini adım adım takip etmek için tek kaynak olarak kullanılacaktır.
 
@@ -19,7 +19,7 @@ Bu dosya, geliştirme sürecini adım adım takip etmek için tek kaynak olarak 
 - [x] Contact CRUD + CSV/Excel import + template
 - [x] Template CRUD + variable parsing
 - [x] WhatsApp servis entegrasyonu
-- [x] Tekli ve bulk gönderim API
+- [x] Tekli ve toplu gönderim API
 - [x] Message log ve filtreleme
 
 ## 3) Ölçekleme

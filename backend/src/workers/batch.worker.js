@@ -4,7 +4,7 @@ import { Worker } from "bullmq";
 import Contact from "../models/contact.model.js";
 import Template from "../models/template.model.js";
 import User from "../models/user.model.js";
-import { getQueueConnection, SEND_BULK_QUEUE_NAME } from "../queues/send-bulk.queue.js";
+import { getQueueConnection, SEND_BATCH_QUEUE_NAME } from "../queues/send-batch.queue.js";
 import { sendWithTemplate } from "../services/message-send.service.js";
 
 dotenv.config();
@@ -18,7 +18,7 @@ if (!mongoUri) {
 await mongoose.connect(mongoUri);
 
 const worker = new Worker(
-  SEND_BULK_QUEUE_NAME,
+  SEND_BATCH_QUEUE_NAME,
   async (job) => {
     const { userId, ownerId, contactId, templateId, variables = {}, mediaUrl = "" } = job.data;
     const scopedOwnerId = ownerId || userId;
@@ -75,13 +75,13 @@ const worker = new Worker(
 );
 
 worker.on("ready", () => {
-  console.log("Bulk worker ready");
+  console.log("Batch worker ready");
 });
 
 worker.on("completed", (job) => {
-  console.log(`Bulk job completed: ${job.id}`);
+  console.log(`Batch job completed: ${job.id}`);
 });
 
 worker.on("failed", (job, error) => {
-  console.error(`Bulk job failed: ${job?.id || "unknown"} - ${error.message}`);
+  console.error(`Batch job failed: ${job?.id || "unknown"} - ${error.message}`);
 });

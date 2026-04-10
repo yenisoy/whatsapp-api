@@ -183,8 +183,8 @@ export const api = {
     return parseResponse(response);
   },
 
-  async sendBulk(payload) {
-    const response = await fetch(`${API_BASE_URL}/send/bulk`, {
+  async sendBatch(payload) {
+    const response = await fetch(`${API_BASE_URL}/send/batch`, {
       method: "POST",
       headers: buildHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(payload)

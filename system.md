@@ -1,5 +1,5 @@
 📄 SYSTEM.md
-WhatsApp Bulk Messaging SaaS (Meta Uyumlu)
+WhatsApp Toplu Mesajlaşma SaaS (Meta Uyumlu)
 🚀 1. AMAÇ
 
 Bu sistem, kullanıcıların:
@@ -58,7 +58,7 @@ POST /send
   }
 }
 🔹 Toplu Gönderim
-POST /send/bulk
+POST /send/batch
 {
   "contactIds": ["id1", "id2"],
   "templateId": "uuid"
@@ -138,7 +138,7 @@ PUT  /templates/:id
 DELETE /templates/:id
 📤 Send
 POST /send
-POST /send/bulk
+POST /send/batch
 📜 Logs
 GET /logs
 🔌 5. WHATSAPP ENTEGRASYON
@@ -207,7 +207,7 @@ Contacts CRUD
 Template CRUD
 Tekli mesaj gönderme
 🥈 PHASE 2
-Bulk messaging
+Toplu mesajlaşma
 Logs
 Dashboard
 🥉 PHASE 3
@@ -238,14 +238,14 @@ mongo db kullanan ve docker ile uyumlu bir sistem olmasını istiyprum
 Güzel—o zaman sistemi MongoDB + Docker-first (container-ready) olacak şekilde netleştirelim. Aşağıya sana direkt kullanabileceğin geliştirilebilir SYSTEM.md (Mongo + Docker versiyonu) bırakıyorum.
 
 📄 SYSTEM.md
-WhatsApp Bulk Messaging SaaS (MongoDB + Docker)
+WhatsApp Toplu Mesajlaşma SaaS (MongoDB + Docker)
 🚀 1. AMAÇ
 
 Bu sistem:
 
 Kişi yönetimi
 Template yönetimi
-WhatsApp mesaj gönderimi (tekli + bulk)
+WhatsApp mesaj gönderimi (tekli + toplu)
 Mesaj loglama
 Basit otomasyon
 
@@ -337,7 +337,7 @@ PUT    /templates/:id
 DELETE /templates/:id
 📤 Send
 POST /send
-POST /send/bulk
+POST /send/batch
 📜 Logs
 GET /logs
 ⚙️ 7. QUEUE (BullMQ + Redis)
@@ -452,7 +452,7 @@ WhatsApp gönderim
 Logs
 PHASE 3
 Queue system
-Bulk send
+Toplu gönderim
 PHASE 4
 Automation
 SaaS dönüşüm
