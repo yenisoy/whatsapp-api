@@ -988,10 +988,26 @@ function App() { // NOSONAR
       )}
 
       {activeTab === "templates" && (
-        <section className="panel two-col">
-          <div>
-            <h2>Template Oluştur</h2>
-            <form onSubmit={onCreateTemplate} className="form">
+        <section className="panel template-panel">
+          <div className="template-header">
+            <div>
+              <h2>Template Yönetimi</h2>
+              <p className="section-caption">Template oluştur, media header yükle ve Meta’dan gelen şablonları filtrele.</p>
+            </div>
+            <div className="row template-header-actions">
+              <button type="button" className="secondary-action" onClick={() => loadTemplates(true)}>Yenile</button>
+              <button type="button" onClick={onImportTemplatesFromMeta}>Meta'dan Çek</button>
+            </div>
+          </div>
+
+          <div className="two-col template-workspace">
+            <div className="template-editor-card">
+              <div className="card-title-block">
+                <h3>Template Oluştur</h3>
+                <p>Başlık, gövde, footer ve medya alanlarını tek ekranda düzenle.</p>
+              </div>
+
+            <form onSubmit={onCreateTemplate} className="form compact-form">
               <input
                 placeholder="Template adı"
                 value={templateForm.name}
@@ -1078,15 +1094,36 @@ function App() { // NOSONAR
 
               <button type="submit">Template Oluştur</button>
             </form>
-            <p className="hint">Medya header için Meta'nın döndürdüğü media handle değeri gerekir.</p>
-          </div>
-
-          <div>
-            <div className="row">
-              <h2>Template Listesi</h2>
-              <button type="button" onClick={onImportTemplatesFromMeta}>Meta'dan Çek</button>
+              <div className="template-preview-box">
+                <div className="card-title-block">
+                  <h3>Canlı Önizleme</h3>
+                  <p>Formu değiştir, önizleme anında güncellensin.</p>
+                </div>
+                <div className="template-preview-meta">
+                  <span>{templateForm.name || "Yeni template"}</span>
+                  <span>{templateForm.language} • {templateForm.category}</span>
+                  <span>{templateForm.headerType === "none" ? "Header yok" : `Header: ${templateForm.headerType}`}</span>
+                </div>
+                <div className="template-preview-body">
+                  {templateForm.headerType === "text" && templateForm.headerText && <p className="preview-block">Header: {templateForm.headerText}</p>}
+                  {isMediaHeaderTemplate(templateForm) && <p className="preview-block">Media handle: {templateForm.headerMediaHandle || "bekleniyor"}</p>}
+                  <p className="preview-block main-body">{templateForm.content || "Mesaj içeriği burada görünecek"}</p>
+                  {templateForm.footerText && <p className="preview-block footer">Footer: {templateForm.footerText}</p>}
+                </div>
+                <p className="hint">Medya header için Meta’nın döndürdüğü media handle değeri gerekir.</p>
+              </div>
             </div>
-            <div className="row" style={{ marginBottom: "12px" }}>
+
+          <div className="template-list-card">
+            <div className="template-list-head">
+              <div>
+                <h2>Template Listesi</h2>
+                <p>{filteredTemplates.length} sonuç / {templates.length} kayıt</p>
+              </div>
+              <span className="list-count-badge">{templates.length} toplam</span>
+            </div>
+
+            <div className="row template-filters" style={{ marginBottom: "12px" }}>
               <input
                 placeholder="Ara (isim, içerik, footer...)"
                 value={templateSearch}
@@ -1104,39 +1141,62 @@ function App() { // NOSONAR
                 <option value="pending">pending</option>
                 <option value="rejected">rejected</option>
               </select>
-              <span className="list-count-badge">{filteredTemplates.length} / {templates.length}</span>
             </div>
             {templateActionResult && <p className="info">{templateActionResult}</p>}
             {templatesLoading ? <p>Yükleniyor...</p> : (
               <ul className="list template-list">
                 {filteredTemplates.map((item) => (
                   <li key={item._id} className="template-item">
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                      <span>
-                        {item.name} • {item.language} • {item.category || "UTILITY"} •
-                        <span className={`status-badge status-${item.status || "pending"}`}>{item.status || "pending"}</span>
-                        {item.metaStatus ? ` • Meta: ${item.metaStatus}` : ""}
-                      </span>
+                    <div className="template-item-top">
+                      <div className="template-item-title">
+                        <strong>{item.name}</strong>
+                        <div className="template-item-badges">
+                          <span className="meta-pill">{item.language}</span>
+                          <span className="meta-pill">{item.category || "UTILITY"}</span>
+                          <span className={`status-badge status-${item.status || "pending"}`}>{item.status || "pending"}</span>
+                          {item.metaStatus ? <span className="meta-pill light">Meta: {item.metaStatus}</span> : null}
+                        </div>
+                      </div>
                       <small>{item.metaCreatedAt ? new Date(item.metaCreatedAt).toLocaleString("tr-TR") : "-"}</small>
                     </div>
-                    <div className="row">
+
+                    <p className="template-summary">{item.content || "İçerik yok"}</p>
+
+                    <div className="template-item-actions">
                       <button type="button" onClick={() => onToggleTemplateDetail(item._id)}>
                         {expandedTemplateId === item._id ? "Detayı Gizle" : "Detay"}
+                      </button>
+                      <button type="button" className="secondary-action" onClick={() => setTemplateForm({
+                        name: item.name || "",
+                        category: item.category || "UTILITY",
+                        language: item.language || "tr",
+                        publishToMeta: true,
+                        headerType: item.headerType || "none",
+                        headerText: item.headerText || "",
+                        headerMediaHandle: item.headerMediaHandle || "",
+                        footerText: item.footerText || "",
+                        content: item.content || ""
+                      })}>
+                        Forma Aktar
                       </button>
                       <button type="button" onClick={() => onDeleteTemplate(item._id)}>Sil</button>
                     </div>
                     {expandedTemplateId === item._id && (
-                      <pre className="info">{[
-                        `Header Type: ${item.headerType || "none"}`,
-                        item.headerText ? `Header Text: ${item.headerText}` : "",
-                        item.footerText ? `Footer: ${item.footerText}` : "",
-                        `Body: ${item.content || ""}`
-                      ].filter(Boolean).join("\n")}</pre>
+                      <div className="template-detail-card">
+                        <pre className="info">{[
+                          `Header Type: ${item.headerType || "none"}`,
+                          item.headerText ? `Header Text: ${item.headerText}` : "",
+                          item.headerMediaHandle ? `Media Handle: ${item.headerMediaHandle}` : "",
+                          item.footerText ? `Footer: ${item.footerText}` : "",
+                          `Body: ${item.content || ""}`
+                        ].filter(Boolean).join("\n")}</pre>
+                      </div>
                     )}
                   </li>
                 ))}
               </ul>
             )}
+          </div>
           </div>
         </section>
       )}
