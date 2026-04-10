@@ -83,6 +83,9 @@ function App() { // NOSONAR
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templateActionResult, setTemplateActionResult] = useState("");
   const [expandedTemplateId, setExpandedTemplateId] = useState("");
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateLanguageFilter, setTemplateLanguageFilter] = useState("all");
+  const [templateStatusFilter, setTemplateStatusFilter] = useState("all");
   const [templateForm, setTemplateForm] = useState(defaultTemplateForm);
   const [templateMediaFile, setTemplateMediaFile] = useState(null);
   const [templateMediaUploading, setTemplateMediaUploading] = useState(false);
@@ -210,6 +213,29 @@ function App() { // NOSONAR
     const start = (safeContactPage - 1) * contactPageSize;
     return filteredContacts.slice(start, start + contactPageSize);
   }, [contactPageSize, filteredContacts, safeContactPage]);
+
+  const filteredTemplates = useMemo(() => {
+    const query = templateSearch.trim().toLowerCase();
+
+    return templates.filter((template) => {
+      const matchesLanguage = templateLanguageFilter === "all" || String(template.language || "").toLowerCase() === templateLanguageFilter;
+      const matchesStatus = templateStatusFilter === "all" || String(template.status || "pending").toLowerCase() === templateStatusFilter;
+
+      if (!matchesLanguage || !matchesStatus) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      const haystack = [template.name, template.category, template.language, template.status, template.metaStatus, template.content, template.footerText, template.headerText]
+        .map((value) => String(value || "").toLowerCase())
+        .join(" ");
+
+      return haystack.includes(query);
+    });
+  }, [templateLanguageFilter, templateSearch, templateStatusFilter, templates]);
 
   const isMediaHeaderTemplate = (template) => ["image", "video", "document"].includes(String(template?.headerType || "").toLowerCase());
 
@@ -1060,10 +1086,30 @@ function App() { // NOSONAR
               <h2>Template Listesi</h2>
               <button type="button" onClick={onImportTemplatesFromMeta}>Meta'dan Çek</button>
             </div>
+            <div className="row" style={{ marginBottom: "12px" }}>
+              <input
+                placeholder="Ara (isim, içerik, footer...)"
+                value={templateSearch}
+                onChange={(event) => setTemplateSearch(event.target.value)}
+              />
+              <select value={templateLanguageFilter} onChange={(event) => setTemplateLanguageFilter(event.target.value)}>
+                <option value="all">Tüm diller</option>
+                <option value="tr">tr</option>
+                <option value="en">en</option>
+                <option value="en_us">en_US</option>
+              </select>
+              <select value={templateStatusFilter} onChange={(event) => setTemplateStatusFilter(event.target.value)}>
+                <option value="all">Tüm durumlar</option>
+                <option value="approved">approved</option>
+                <option value="pending">pending</option>
+                <option value="rejected">rejected</option>
+              </select>
+              <span className="list-count-badge">{filteredTemplates.length} / {templates.length}</span>
+            </div>
             {templateActionResult && <p className="info">{templateActionResult}</p>}
             {templatesLoading ? <p>Yükleniyor...</p> : (
               <ul className="list template-list">
-                {templates.map((item) => (
+                {filteredTemplates.map((item) => (
                   <li key={item._id} className="template-item">
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                       <span>
