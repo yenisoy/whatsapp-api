@@ -15,7 +15,7 @@ const templateSchema = new mongoose.Schema(
     },
     language: {
       type: String,
-      enum: ["tr", "en"],
+      enum: ["tr", "en", "en_US"],
       default: "tr"
     },
     category: {

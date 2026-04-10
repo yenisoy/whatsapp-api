@@ -7,9 +7,9 @@ const mapProviderStatusToLocalStatus = (providerStatus = "") => {
     return "failed";
   }
 
-  if (["sent", "delivered", "read"].includes(normalized)) {
-    return "sent";
-  }
+  if (["sent"].includes(normalized)) return "sent";
+  if (["delivered"].includes(normalized)) return "delivered";
+  if (["read"].includes(normalized)) return "read";
 
   return "queued";
 };

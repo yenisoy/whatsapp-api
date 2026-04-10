@@ -11,7 +11,8 @@ Coolify'da compose dosyası olarak aşağıdaki dosyayı seçin:
 ## 2) Expose edilecek servisler
 
 - `frontend` servisini public edin (port `80`)
-- İsterseniz `backend` servisini de ayrı domain ile public edebilirsiniz (port `5000`)
+- Frontend, nginx reverse proxy ile backend'e API isteklerini yönlendirir
+- Backend'i ayrı domain ile expose etmenize **gerek yoktur** (nginx proxy arkadan halleder)
 
 ## 3) Gerekli environment değişkenleri
 
@@ -22,19 +23,22 @@ Coolify'da aşağıdakileri tanımlayın:
 - `WHATSAPP_PHONE_ID`
 - `WHATSAPP_BUSINESS_ACCOUNT_ID`
 - `META_APP_ID`
-- `VITE_API_BASE_URL` (örn: `https://api.senin-domainin.com`)
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
 
 Opsiyonel:
 
 - `ADMIN_USERNAME` (default: `admin`)
 - `ADMIN_PASSWORD` (default: `admin123`)
-- `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+- `VITE_API_BASE_URL` — **Genellikle boş bırakın**. Nginx reverse proxy sayesinde frontend ve backend aynı domain'den hizmet verir. Sadece backend'i ayrı bir domain'e koyduysanız belirtin (örn: `https://api.senin-domainin.com`).
 
-## 4) Önemli not
+## 4) Önemli notlar
 
-`VITE_API_BASE_URL` build-time değişkendir. Frontend build edilirken doğru API domainini verdiğinizden emin olun.
+- Frontend nginx üzerinden çalışır ve tüm API isteklerini (`/auth`, `/contacts`, `/templates`, `/send`, `/logs`, `/users`, `/webhooks`, `/health`) otomatik olarak backend container'a yönlendirir.
+- `VITE_API_BASE_URL` build-time değişkendir. Boş bırakıldığında relative URL kullanılır (nginx proxy ile çalışır).
+- Webhook URL'si olarak frontend domain'inizi kullanabilirsiniz: `https://<frontend-domain>/webhooks`
 
 ## 5) İlk deploy sonrası kontrol
 
 - Frontend: `https://<frontend-domain>`
-- Backend health: `https://<backend-domain>/health`
+- Backend health (nginx proxy üzerinden): `https://<frontend-domain>/health`
+- Varsayılan giriş: `admin` / `admin123`

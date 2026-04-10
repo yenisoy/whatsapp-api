@@ -29,7 +29,7 @@ const messageSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["queued", "sent", "failed"],
+      enum: ["queued", "sent", "delivered", "read", "failed"],
       default: "queued"
     },
     error: {

@@ -93,102 +93,58 @@ export const sendWithTemplate = async ({ ownerId, phone, contactId = null, templ
     throw new Error("mediaUrl is required for media header templates");
   }
 
-  if (isMediaTemplate) {
-    const metaTemplateName = String(template?.metaTemplateName || "").trim();
+  const metaTemplateName = String(template?.metaTemplateName || template?.name || "").trim();
 
-    if (!metaTemplateName) {
-      const log = await buildMessageLog({
-        ownerId,
-        phone: normalizedPhone,
-        contactId,
-        templateId: template._id,
-        variables,
-        status: "failed",
-        error: "media header template must be published to Meta before sending",
-        providerMessageId: "",
-        mediaUrl
-      });
-
-      return {
-        success: false,
-        mode: "local",
-        log
-      };
-    }
-
-    const templateResult = await sendWhatsAppTemplate({
-      phone: normalizedPhone,
-      templateName: metaTemplateName,
-      language: template?.language || "tr",
-      components: buildTemplateComponents({ template, variables, mediaUrl }),
-      credentials
-    });
-
-    if (!templateResult.success) {
-      const error = templateResult.error || "template send failed";
-      const log = await buildMessageLog({
-        ownerId,
-        phone: normalizedPhone,
-        contactId,
-        templateId: template._id,
-        variables,
-        status: "failed",
-        error,
-        providerMessageId: templateResult.providerMessageId || "",
-        mediaUrl,
-        providerRequestUrl: templateResult.providerRequestUrl || "",
-        providerRequestBody: templateResult.providerRequestBody || null
-      });
-
-      return {
-        success: false,
-        mode: templateResult.mode,
-        log
-      };
-    }
-
+  if (!metaTemplateName) {
     const log = await buildMessageLog({
       ownerId,
       phone: normalizedPhone,
       contactId,
       templateId: template._id,
       variables,
-      status: toLocalLogStatus({
-        success: true,
-        mode: templateResult.mode,
-        providerStatus: templateResult.providerStatus
-      }),
-      error: "",
+      status: "failed",
+      error: "template name is missing or invalid",
+      providerMessageId: "",
+      mediaUrl
+    });
+
+    return {
+      success: false,
+      mode: "local",
+      log
+    };
+  }
+
+  const templateResult = await sendWhatsAppTemplate({
+    phone: normalizedPhone,
+    templateName: metaTemplateName,
+    language: template?.language || "tr",
+    components: buildTemplateComponents({ template, variables, mediaUrl }),
+    credentials
+  });
+
+  if (!templateResult.success) {
+    const error = templateResult.error || "template send failed";
+    const log = await buildMessageLog({
+      ownerId,
+      phone: normalizedPhone,
+      contactId,
+      templateId: template._id,
+      variables,
+      status: "failed",
+      error,
       providerMessageId: templateResult.providerMessageId || "",
       mediaUrl,
       providerRequestUrl: templateResult.providerRequestUrl || "",
       providerRequestBody: templateResult.providerRequestBody || null
     });
 
-    log.providerStatus = templateResult.providerStatus || "";
-    await log.save();
-
     return {
-      success: true,
+      success: false,
       mode: templateResult.mode,
-      providerStatus: templateResult.providerStatus || "",
       log
     };
   }
-
-  const text = renderTemplate(template.content, variables);
-  const sendResult = await sendWhatsAppText({
-    phone: normalizedPhone,
-    text,
-    credentials
-  });
-
-  const status = toLocalLogStatus({
-    success: sendResult.success,
-    mode: sendResult.mode,
-    providerStatus: sendResult.providerStatus
-  });
-  const error = sendResult.success ? "" : sendResult.error || "unknown error";
 
   const log = await buildMessageLog({
     ownerId,
@@ -196,21 +152,25 @@ export const sendWithTemplate = async ({ ownerId, phone, contactId = null, templ
     contactId,
     templateId: template._id,
     variables,
-    status,
-    error,
-    providerMessageId: sendResult.providerMessageId || "",
-    mediaUrl: "",
-    providerRequestUrl: sendResult.providerRequestUrl || "",
-    providerRequestBody: sendResult.providerRequestBody || null
+    status: toLocalLogStatus({
+      success: true,
+      mode: templateResult.mode,
+      providerStatus: templateResult.providerStatus
+    }),
+    error: "",
+    providerMessageId: templateResult.providerMessageId || "",
+    mediaUrl,
+    providerRequestUrl: templateResult.providerRequestUrl || "",
+    providerRequestBody: templateResult.providerRequestBody || null
   });
 
-  log.providerStatus = sendResult.providerStatus || "";
+  log.providerStatus = templateResult.providerStatus || "";
   await log.save();
 
   return {
-    success: sendResult.success,
-    mode: sendResult.mode,
-    providerStatus: sendResult.providerStatus || "",
+    success: true,
+    mode: templateResult.mode,
+    providerStatus: templateResult.providerStatus || "",
     log
   };
 };
