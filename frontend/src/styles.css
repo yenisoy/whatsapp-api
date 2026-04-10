@@ -103,6 +103,225 @@ label {
   box-shadow: var(--shadow);
 }
 
+.contacts-panel {
+  padding: 20px;
+}
+
+.contacts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.contacts-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.section-caption {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.contact-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  min-width: 84px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.stat-pill strong {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.stat-pill span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.contacts-grid {
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 18px;
+}
+
+.contact-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  padding: 18px;
+}
+
+.card-title-block h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.card-title-block p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.compact-form {
+  margin-top: 14px;
+}
+
+.import-box {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.download-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.secondary-action {
+  background: #ffffff;
+  color: var(--primary);
+  border: 1px solid #c7d2fe;
+  box-shadow: none;
+}
+
+.secondary-action:hover {
+  background: #f5f7ff;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.12);
+}
+
+.contact-feedback {
+  margin-top: 16px;
+}
+
+.contact-list-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.contact-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.list-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 13px;
+  border: 1px solid #dbe3ff;
+}
+
+.search-bar {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.search-bar input {
+  min-width: 0;
+}
+
+.contact-list {
+  gap: 10px;
+}
+
+.contact-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.contact-meta {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.contact-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.contact-phone {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.contact-tag-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f3f4ff;
+  color: var(--primary-2);
+  border: 1px solid #e0e7ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.delete-action {
+  background: #fff1f2;
+  color: var(--danger);
+  border: 1px solid #fecdd3;
+  box-shadow: none;
+}
+
+.delete-action:hover {
+  background: #ffe4e6;
+  box-shadow: none;
+}
+
+.empty-state {
+  border: 1px dashed #c7d2fe;
+  background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-state h4 {
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.empty-state p {
+  margin: 0;
+}
+
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -301,6 +520,28 @@ button:hover {
   .grid-4 {
     grid-template-columns: 1fr;
   }
+
+  .contacts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contacts-header,
+  .contact-list-header {
+    flex-direction: column;
+  }
+
+  .search-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-list-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .delete-action {
+    width: 100%;
+  }
 }
 
 /* Tag Chips */
@@ -397,8 +638,8 @@ button:hover {
 
 /* Cancel Button */
 .btn-cancel {
-  background: linear-gradient(120deg, var(--danger) 0%, #ef4444 100%);
-  color: white;
+  background: linear-gradient(120deg, #b91c1c 0%, #dc2626 100%);
+  color: #ffffff;
   border-color: transparent;
   padding: 6px 16px;
   font-size: 13px;

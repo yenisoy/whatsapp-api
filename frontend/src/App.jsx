@@ -118,15 +118,24 @@ function App() {
   const availableTags = useMemo(() => {
     const tagSet = new Set();
     contacts.forEach((c) => {
-      if (c.tag && c.tag.trim()) tagSet.add(c.tag.trim());
+      if (c.tag?.trim()) tagSet.add(c.tag.trim());
     });
-    return Array.from(tagSet).sort();
+    return Array.from(tagSet).sort((first, second) => first.localeCompare(second, "tr"));
   }, [contacts]);
 
   const filteredGroupContacts = useMemo(() => {
     if (selectedTags.length === 0) return contacts;
     return contacts.filter((c) => selectedTags.includes(c.tag?.trim()));
   }, [contacts, selectedTags]);
+
+  const contactStats = useMemo(() => {
+    const taggedContacts = contacts.filter((contact) => contact?.tag?.trim()).length;
+    return {
+      total: contacts.length,
+      tagged: taggedContacts,
+      untagged: contacts.length - taggedContacts
+    };
+  }, [contacts]);
 
   const isMediaHeaderTemplate = (template) => ["image", "video", "document"].includes(String(template?.headerType || "").toLowerCase());
 
@@ -301,6 +310,61 @@ function App() {
       setImportResult(formatError(error));
     }
   };
+
+  const onClearContactSearch = async () => {
+    setContactQuery("");
+    await loadContacts("");
+  };
+
+  let contactListContent;
+
+  if (contactsLoading) {
+    contactListContent = <div className="empty-state"><p>Yükleniyor...</p></div>;
+  } else if (contacts.length > 0) {
+    contactListContent = (
+      <ul className="list contact-list">
+        {contacts.map((item) => (
+          <li key={item._id} className="contact-list-item">
+            <div className="contact-meta">
+              <div className="contact-name-row">
+                <strong>{item.name || "İsimsiz"}</strong>
+                {item.tag && <span className="contact-tag-badge">{item.tag}</span>}
+              </div>
+              <span className="contact-phone">{item.phone}</span>
+            </div>
+            <button type="button" className="delete-action" onClick={() => onDeleteContact(item._id)}>Sil</button>
+          </li>
+        ))}
+      </ul>
+    );
+  } else {
+    contactListContent = (
+      <div className="empty-state">
+        <h4>Henüz kişi yok</h4>
+        <p>Yeni kişi ekleyebilir veya CSV / Excel şablonu ile içe aktarabilirsiniz.</p>
+      </div>
+    );
+  }
+
+  const sendLogItems = sendLogs.map((log, idx) => {
+    let logStatusIcon = "⚠";
+
+    if (log.status === "success") {
+      logStatusIcon = "✓";
+    } else if (log.status === "failed") {
+      logStatusIcon = "✗";
+    }
+
+    const logKey = log._id || `${log.phone || "log"}-${log.createdAt || idx}`;
+
+    return (
+      <div key={logKey} className={`send-log-item ${log.status}`}>
+        <span className="send-log-status">{logStatusIcon}</span>
+        <span>{log.name || log.phone} • {log.phone}</span>
+        <span className="send-log-msg">{log.message}</span>
+      </div>
+    );
+  });
 
   const onImportContacts = async (event) => {
     const file = event.target.files?.[0];
@@ -670,41 +734,68 @@ function App() {
       )}
 
       {activeTab === "contacts" && (
-        <section className="panel two-col">
-          <div>
-            <h2>Contact Ekle</h2>
-            <form onSubmit={onCreateContact} className="form">
-              <input placeholder="Ad" value={contactForm.name} onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })} />
-              <input placeholder="Telefon" value={contactForm.phone} onChange={(event) => setContactForm({ ...contactForm, phone: event.target.value })} required />
-              <input placeholder="Tag" value={contactForm.tag} onChange={(event) => setContactForm({ ...contactForm, tag: event.target.value })} />
-              <button type="submit">Kaydet</button>
-            </form>
-
-            <h3>CSV / Excel Import</h3>
-            <input type="file" accept=".csv,.xlsx,.xls" onChange={onImportContacts} />
-            <div className="links">
-              <button type="button" onClick={() => onDownloadContactTemplate("csv")}>CSV Şablonu</button>
-              <button type="button" onClick={() => onDownloadContactTemplate("xlsx")}>Excel Şablonu</button>
+        <section className="panel contacts-panel">
+          <div className="contacts-header">
+            <div>
+              <h2>Contacts</h2>
+              <p className="section-caption">Kişi ekleme, içe aktarma ve liste yönetimi tek ekranda.</p>
             </div>
-            {importResult && <p className="info">{importResult}</p>}
+            <div className="contact-stats">
+              <div className="stat-pill"><strong>{contactStats.total}</strong><span>Toplam</span></div>
+              <div className="stat-pill"><strong>{contactStats.tagged}</strong><span>Tag’li</span></div>
+              <div className="stat-pill"><strong>{contactStats.untagged}</strong><span>Tagsiz</span></div>
+            </div>
           </div>
 
-          <div>
-            <h2>Kişiler</h2>
-            <div className="row">
-              <input placeholder="Ara (name/phone/tag)" value={contactQuery} onChange={(event) => setContactQuery(event.target.value)} />
-              <button type="button" onClick={() => loadContacts(contactQuery)}>Filtrele</button>
+          <div className="contacts-grid">
+            <div className="contact-card">
+              <div className="card-title-block">
+                <h3>Contact Ekle</h3>
+                <p>Tekli kayıt oluştur veya mevcut kayıtları güncelle.</p>
+              </div>
+              <form onSubmit={onCreateContact} className="form compact-form">
+                <input placeholder="Ad" value={contactForm.name} onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })} />
+                <input placeholder="Telefon" value={contactForm.phone} onChange={(event) => setContactForm({ ...contactForm, phone: event.target.value })} required />
+                <input placeholder="Tag" value={contactForm.tag} onChange={(event) => setContactForm({ ...contactForm, tag: event.target.value })} />
+                <button type="submit">Kaydet</button>
+              </form>
+
+              <div className="import-box">
+                <div className="card-title-block">
+                  <h3>CSV / Excel Import</h3>
+                  <p>Şablonu indir, dosyanı yükle ve toplu aktarım yap.</p>
+                </div>
+                <input type="file" accept=".csv,.xlsx,.xls" onChange={onImportContacts} />
+                <div className="download-actions">
+                  <button type="button" className="secondary-action" onClick={() => onDownloadContactTemplate("csv")}>CSV Şablonu</button>
+                  <button type="button" className="secondary-action" onClick={() => onDownloadContactTemplate("xlsx")}>Excel Şablonu</button>
+                </div>
+              </div>
+
+              {importResult && <p className="info contact-feedback">{importResult}</p>}
             </div>
-            {contactsLoading ? <p>Yükleniyor...</p> : (
-              <ul className="list">
-                {contacts.map((item) => (
-                  <li key={item._id}>
-                    <span>{item.name || "-"} • {item.phone} • {item.tag || "-"}</span>
-                    <button type="button" onClick={() => onDeleteContact(item._id)}>Sil</button>
-                  </li>
-                ))}
-              </ul>
-            )}
+
+            <div className="contact-card contact-list-card">
+              <div className="card-title-block contact-list-header">
+                <div>
+                  <h3>Kişiler</h3>
+                  <p>{contactQuery ? `Arama: ${contactQuery}` : "Tüm kayıtlar"}</p>
+                </div>
+                <span className="list-count-badge">{contacts.length} kayıt</span>
+              </div>
+
+              <div className="search-bar">
+                <input
+                  placeholder="Ara (name/phone/tag)"
+                  value={contactQuery}
+                  onChange={(event) => setContactQuery(event.target.value)}
+                />
+                <button type="button" onClick={() => loadContacts(contactQuery)}>Filtrele</button>
+                <button type="button" className="secondary-action" onClick={onClearContactSearch} disabled={!contactQuery && contacts.length === 0}>Temizle</button>
+              </div>
+
+              {contactListContent}
+            </div>
           </div>
         </section>
       )}
@@ -987,15 +1078,7 @@ function App() {
 
               {/* Mesaj logları */}
               {sendLogs.length > 0 && (
-                <div className="send-log-list">
-                  {sendLogs.map((log, idx) => (
-                    <div key={idx} className={`send-log-item ${log.status}`}>
-                      <span className="send-log-status">{log.status === "success" ? "✓" : log.status === "failed" ? "✗" : "⚠"}</span>
-                      <span>{log.name || log.phone} • {log.phone}</span>
-                      <span className="send-log-msg">{log.message}</span>
-                    </div>
-                  ))}
-                </div>
+                <div className="send-log-list">{sendLogItems}</div>
               )}
 
               {!isSending && (
