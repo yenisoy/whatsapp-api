@@ -95,6 +95,44 @@ export const api = {
     return `${API_BASE_URL}/contacts/import/template?format=${format}`;
   },
 
+  async downloadTemplateImport(format = "csv") {
+    const response = await fetch(`${API_BASE_URL}/contacts/import/template?format=${encodeURIComponent(format)}`, {
+      headers: buildHeaders()
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      let message = `Request failed with ${response.status}`;
+
+      if (text) {
+        try {
+          const data = JSON.parse(text);
+          message = data?.message || message;
+        } catch {
+          message = text;
+        }
+      }
+
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get("content-disposition") || "";
+    const fileNameMatch = /filename=([^;]+)/i.exec(contentDisposition);
+    const fileName = fileNameMatch?.[1]?.replaceAll('"', "") || `contact-import-template.${format === "xlsx" || format === "xls" ? "xlsx" : "csv"}`;
+
+    const downloadUrl = globalThis.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    globalThis.URL.revokeObjectURL(downloadUrl);
+
+    return true;
+  },
+
   async getTemplates(options = {}) {
     const syncMeta = options?.syncMeta ? "?syncMeta=true" : "";
     const response = await fetch(`${API_BASE_URL}/templates${syncMeta}`, {

@@ -319,6 +319,15 @@ function App() {
     }
   };
 
+  const onDownloadContactTemplate = async (format) => {
+    try {
+      await api.downloadTemplateImport(format);
+      setImportResult(`${format.toUpperCase()} şablonu indirildi`);
+    } catch (error) {
+      setImportResult(formatError(error));
+    }
+  };
+
   const onDeleteTemplate = async (id) => {
     try {
       await api.deleteTemplate(id);
@@ -674,8 +683,8 @@ function App() {
             <h3>CSV / Excel Import</h3>
             <input type="file" accept=".csv,.xlsx,.xls" onChange={onImportContacts} />
             <div className="links">
-              <a href={api.getTemplateDownloadUrl("csv")} target="_blank" rel="noreferrer">CSV Şablonu</a>
-              <a href={api.getTemplateDownloadUrl("xlsx")} target="_blank" rel="noreferrer">Excel Şablonu</a>
+              <button type="button" onClick={() => onDownloadContactTemplate("csv")}>CSV Şablonu</button>
+              <button type="button" onClick={() => onDownloadContactTemplate("xlsx")}>Excel Şablonu</button>
             </div>
             {importResult && <p className="info">{importResult}</p>}
           </div>
