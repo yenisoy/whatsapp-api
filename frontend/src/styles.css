@@ -167,6 +167,10 @@ label {
   padding: 18px;
 }
 
+.contact-card:hover {
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
 .card-title-block h3 {
   margin: 0;
   font-size: 18px;
@@ -183,9 +187,11 @@ label {
 }
 
 .import-box {
+  padding: 16px;
   margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
+  border: 1px dashed #c7d2fe;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
 }
 
 .download-actions {
@@ -205,6 +211,46 @@ label {
 .secondary-action:hover {
   background: #f5f7ff;
   box-shadow: 0 6px 16px rgba(79, 70, 229, 0.12);
+}
+
+.tiny-action {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.tag-filter-box {
+  margin: 16px 0 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fbfcff 0%, #f7f9ff 100%);
+}
+
+.tag-filter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tag-filter-head p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.tag-filter-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.contact-tag-chips .tag-chip {
+  padding: 6px 12px;
+  font-size: 12px;
 }
 
 .contact-feedback {
@@ -262,6 +308,19 @@ label {
   background: #ffffff;
 }
 
+.contact-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  box-shadow: 0 8px 16px rgba(79, 70, 229, 0.18);
+  flex-shrink: 0;
+}
+
 .contact-meta {
   display: grid;
   gap: 6px;
@@ -273,6 +332,10 @@ label {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.contact-name-row strong {
+  font-size: 15px;
 }
 
 .contact-phone {
@@ -302,6 +365,24 @@ label {
 .delete-action:hover {
   background: #ffe4e6;
   box-shadow: none;
+}
+
+.import-box input[type="file"] {
+  width: 100%;
+  padding: 12px;
+  border-style: dashed;
+  background: #ffffff;
+}
+
+.import-box input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(120deg, var(--primary) 0%, var(--primary-2) 100%);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
 }
 
 .empty-state {
@@ -539,8 +620,18 @@ button:hover {
     flex-direction: column;
   }
 
+  .contact-avatar {
+    width: 42px;
+    height: 42px;
+  }
+
   .delete-action {
     width: 100%;
+  }
+
+  .tag-filter-head {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

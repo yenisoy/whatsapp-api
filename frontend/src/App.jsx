@@ -28,7 +28,38 @@ const compareTemplatesByMetaOrder = (first, second) => {
   return secondLocal - firstLocal;
 };
 
-function App() {
+const getContactInitials = (contact = {}) => {
+  const name = String(contact?.name || "").trim();
+  const phone = String(contact?.phone || "").trim();
+
+  if (name) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    const first = parts[0]?.[0] || "";
+    const second = parts[1]?.[0] || parts[0]?.[1] || "";
+    return `${first}${second}`.trim().toUpperCase() || first.toUpperCase();
+  }
+
+  if (phone) {
+    return phone.slice(-2);
+  }
+
+  return "?";
+};
+
+const getContactAvatarStyle = (contact = {}) => {
+  const seed = String(contact?.name || contact?.phone || "contact");
+  let hash = 0;
+
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + (seed.codePointAt(index) || 0)) % 360;
+  }
+
+  return {
+    background: `linear-gradient(135deg, hsl(${hash} 82% 56%) 0%, hsl(${(hash + 28) % 360} 82% 44%) 100%)`
+  };
+};
+
+function App() { // NOSONAR
   const [activeTab, setActiveTab] = useState("dashboard");
   const [health, setHealth] = useState("checking");
 
@@ -42,6 +73,7 @@ function App() {
   const [contactForm, setContactForm] = useState(defaultContact);
   const [contactQuery, setContactQuery] = useState("");
   const [importResult, setImportResult] = useState("");
+  const [contactTagFilters, setContactTagFilters] = useState([]);
 
   const [templates, setTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
@@ -136,6 +168,22 @@ function App() {
       untagged: contacts.length - taggedContacts
     };
   }, [contacts]);
+
+  let contactListSubtitle = "Tüm kayıtlar";
+
+  if (contactTagFilters.length > 0) {
+    contactListSubtitle = `${contactTagFilters.length} tag filtresi aktif`;
+  } else if (contactQuery) {
+    contactListSubtitle = `Arama: ${contactQuery}`;
+  }
+
+  const filteredContacts = useMemo(() => {
+    if (contactTagFilters.length === 0) {
+      return contacts;
+    }
+
+    return contacts.filter((contact) => contactTagFilters.includes(contact?.tag?.trim()));
+  }, [contactTagFilters, contacts]);
 
   const isMediaHeaderTemplate = (template) => ["image", "video", "document"].includes(String(template?.headerType || "").toLowerCase());
 
@@ -313,18 +361,34 @@ function App() {
 
   const onClearContactSearch = async () => {
     setContactQuery("");
+    setContactTagFilters([]);
     await loadContacts("");
+  };
+
+  const onToggleContactTag = (tag) => {
+    setContactTagFilters((current) => (
+      current.includes(tag)
+        ? current.filter((item) => item !== tag)
+        : [...current, tag]
+    ));
+  };
+
+  const onClearContactTags = () => {
+    setContactTagFilters([]);
   };
 
   let contactListContent;
 
   if (contactsLoading) {
     contactListContent = <div className="empty-state"><p>Yükleniyor...</p></div>;
-  } else if (contacts.length > 0) {
+  } else if (filteredContacts.length > 0) {
     contactListContent = (
       <ul className="list contact-list">
-        {contacts.map((item) => (
+        {filteredContacts.map((item) => (
           <li key={item._id} className="contact-list-item">
+            <div className="contact-avatar" style={getContactAvatarStyle(item)} aria-hidden="true">
+              {getContactInitials(item)}
+            </div>
             <div className="contact-meta">
               <div className="contact-name-row">
                 <strong>{item.name || "İsimsiz"}</strong>
@@ -340,8 +404,8 @@ function App() {
   } else {
     contactListContent = (
       <div className="empty-state">
-        <h4>Henüz kişi yok</h4>
-        <p>Yeni kişi ekleyebilir veya CSV / Excel şablonu ile içe aktarabilirsiniz.</p>
+        <h4>{contacts.length > 0 ? "Eşleşen kişi bulunamadı" : "Henüz kişi yok"}</h4>
+        <p>{contacts.length > 0 ? "Filtreleri temizleyip tekrar deneyin." : "Yeni kişi ekleyebilir veya CSV / Excel şablonu ile içe aktarabilirsiniz."}</p>
       </div>
     );
   }
@@ -779,9 +843,39 @@ function App() {
               <div className="card-title-block contact-list-header">
                 <div>
                   <h3>Kişiler</h3>
-                  <p>{contactQuery ? `Arama: ${contactQuery}` : "Tüm kayıtlar"}</p>
+                  <p>{contactListSubtitle}</p>
                 </div>
-                <span className="list-count-badge">{contacts.length} kayıt</span>
+                <span className="list-count-badge">{filteredContacts.length} / {contacts.length} kayıt</span>
+              </div>
+
+              <div className="tag-filter-box">
+                <div className="tag-filter-head">
+                  <p>Tag filtreleri</p>
+                  <button type="button" className="secondary-action tiny-action" onClick={onClearContactTags} disabled={contactTagFilters.length === 0}>Temizle</button>
+                </div>
+                {availableTags.length > 0 ? (
+                  <div className="tag-chips contact-tag-chips">
+                    <button
+                      type="button"
+                      className={contactTagFilters.length === 0 ? "tag-chip active" : "tag-chip"}
+                      onClick={onClearContactTags}
+                    >
+                      Tümü
+                    </button>
+                    {availableTags.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        className={contactTagFilters.includes(tag) ? "tag-chip active" : "tag-chip"}
+                        onClick={() => onToggleContactTag(tag)}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="tag-filter-empty">Tag bulunan kişi yok.</p>
+                )}
               </div>
 
               <div className="search-bar">
@@ -791,7 +885,7 @@ function App() {
                   onChange={(event) => setContactQuery(event.target.value)}
                 />
                 <button type="button" onClick={() => loadContacts(contactQuery)}>Filtrele</button>
-                <button type="button" className="secondary-action" onClick={onClearContactSearch} disabled={!contactQuery && contacts.length === 0}>Temizle</button>
+                <button type="button" className="secondary-action" onClick={onClearContactSearch} disabled={!contactQuery && contactTagFilters.length === 0 && contacts.length === 0}>Temizle</button>
               </div>
 
               {contactListContent}
