@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api, setApiToken } from "./api";
 
 const defaultContact = { name: "", phone: "", tag: "" };
@@ -16,7 +16,7 @@ const defaultTemplateForm = {
 const defaultLogin = { username: "", password: "" };
 const defaultNewUser = { username: "", password: "", role: "user" };
 const defaultSingleSendForm = { contactId: "", phone: "", templateId: "", mediaUrl: "", variablesJson: '{"name":"Ahmet"}' };
-const defaultBatchSendForm = { templateId: "", mediaUrl: "", variablesJson: '{"name":"Ahmet"}', contactIds: [] };
+const defaultGroupSendForm = { templateId: "", mediaUrl: "", variablesJson: '{"name":"Ahmet"}', contactIds: [] };
 
 const formatError = (error) => error?.message || "Beklenmeyen bir hata oluştu";
 
@@ -52,8 +52,15 @@ function App() {
   const [templateMediaUploading, setTemplateMediaUploading] = useState(false);
 
   const [singleSendForm, setSingleSendForm] = useState(defaultSingleSendForm);
-  const [batchSendForm, setBatchSendForm] = useState(defaultBatchSendForm);
+  const [groupSendForm, setGroupSendForm] = useState(defaultGroupSendForm);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [sendResult, setSendResult] = useState("");
+
+  // Grup gönderim ilerleme durumu
+  const [isSending, setIsSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState({ sent: 0, total: 0, success: 0, failed: 0 });
+  const [sendLogs, setSendLogs] = useState([]);
+  const cancelRef = useRef(false);
 
   const [logsResult, setLogsResult] = useState("");
   const [messageStats, setMessageStats] = useState({
@@ -103,10 +110,23 @@ function App() {
     [templates, singleSendForm.templateId]
   );
 
-  const selectedBatchTemplate = useMemo(
-    () => templates.find((item) => item._id === batchSendForm.templateId) || null,
-    [templates, batchSendForm.templateId]
+  const selectedGroupTemplate = useMemo(
+    () => templates.find((item) => item._id === groupSendForm.templateId) || null,
+    [templates, groupSendForm.templateId]
   );
+
+  const availableTags = useMemo(() => {
+    const tagSet = new Set();
+    contacts.forEach((c) => {
+      if (c.tag && c.tag.trim()) tagSet.add(c.tag.trim());
+    });
+    return Array.from(tagSet).sort();
+  }, [contacts]);
+
+  const filteredGroupContacts = useMemo(() => {
+    if (selectedTags.length === 0) return contacts;
+    return contacts.filter((c) => selectedTags.includes(c.tag?.trim()));
+  }, [contacts, selectedTags]);
 
   const isMediaHeaderTemplate = (template) => ["image", "video", "document"].includes(String(template?.headerType || "").toLowerCase());
 
@@ -256,7 +276,8 @@ function App() {
     setContacts([]);
     setTemplates([]);
     setSingleSendForm(defaultSingleSendForm);
-    setBatchSendForm(defaultBatchSendForm);
+    setGroupSendForm(defaultGroupSendForm);
+    setSelectedTags([]);
     setUsers([]);
     setActiveTab("dashboard");
   };
@@ -372,8 +393,29 @@ function App() {
     }
   };
 
-  const onToggleBatchContact = (contactId) => {
-    setBatchSendForm((current) => {
+  const onToggleTag = (tag) => {
+    setSelectedTags((current) => {
+      const newTags = current.includes(tag)
+        ? current.filter((t) => t !== tag)
+        : [...current, tag];
+      return newTags;
+    });
+  };
+
+  // Tag değiştiğinde contactları otomatik seç
+  useEffect(() => {
+    if (selectedTags.length === 0) {
+      setGroupSendForm((current) => ({ ...current, contactIds: [] }));
+      return;
+    }
+    const matched = contacts
+      .filter((c) => selectedTags.includes(c.tag?.trim()))
+      .map((c) => c._id);
+    setGroupSendForm((current) => ({ ...current, contactIds: matched }));
+  }, [selectedTags, contacts]);
+
+  const onToggleGroupContact = (contactId) => {
+    setGroupSendForm((current) => {
       const exists = current.contactIds.includes(contactId);
       return {
         ...current,
@@ -384,18 +426,16 @@ function App() {
     });
   };
 
-  const onSelectAllBatchContacts = () => {
-    setBatchSendForm((current) => ({
+  const onSelectAllGroupContacts = () => {
+    setGroupSendForm((current) => ({
       ...current,
-      contactIds: contacts.map((item) => item._id)
+      contactIds: filteredGroupContacts.map((item) => item._id)
     }));
   };
 
-  const onClearBatchContacts = () => {
-    setBatchSendForm((current) => ({
-      ...current,
-      contactIds: []
-    }));
+  const onClearGroupContacts = () => {
+    setGroupSendForm((current) => ({ ...current, contactIds: [] }));
+    setSelectedTags([]);
   };
 
   const onSendSingleMessage = async (event) => {
@@ -425,30 +465,77 @@ function App() {
     }
   };
 
-  const onSendBatchMessage = async (event) => {
+  const onCancelSending = () => {
+    cancelRef.current = true;
+  };
+
+  const onSendGroupMessages = async (event) => {
     event.preventDefault();
     setSendResult("");
+    setSendLogs([]);
 
+    const selectedIds = groupSendForm.contactIds;
+    if (!selectedIds.length) {
+      setSendResult("Gönderim için en az bir kişi seçin");
+      return;
+    }
+    if (!groupSendForm.templateId) {
+      setSendResult("Template seçin");
+      return;
+    }
+
+    let variables;
     try {
-      if (!batchSendForm.contactIds.length) {
-        setSendResult("Toplu gönderim için en az bir contact seçin");
-        return;
+      variables = JSON.parse(groupSendForm.variablesJson || "{}");
+    } catch {
+      setSendResult("Variables JSON formatı hatalı");
+      return;
+    }
+
+    const selectedContacts = contacts.filter((c) => selectedIds.includes(c._id));
+    const total = selectedContacts.length;
+
+    setIsSending(true);
+    cancelRef.current = false;
+    setSendProgress({ sent: 0, total, success: 0, failed: 0 });
+
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < selectedContacts.length; i++) {
+      if (cancelRef.current) {
+        setSendLogs((prev) => [...prev, { phone: "—", status: "cancelled", message: "Gönderim kullanıcı tarafından durduruldu" }]);
+        break;
       }
 
-      const variables = JSON.parse(batchSendForm.variablesJson || "{}");
-      const payload = {
-        contactIds: batchSendForm.contactIds,
-        templateId: batchSendForm.templateId,
-        mediaUrl: batchSendForm.mediaUrl,
-        variables
-      };
+      const contact = selectedContacts[i];
+      const mergedVars = { name: contact.name || "", ...variables };
 
-      const response = await api.sendBatch(payload);
-      setSendResult(JSON.stringify(response, null, 2));
-      await loadMessageStats();
-    } catch (error) {
-      setSendResult(formatError(error));
+      try {
+        const response = await api.sendSingle({
+          phone: contact.phone,
+          templateId: groupSendForm.templateId,
+          mediaUrl: groupSendForm.mediaUrl || "",
+          variables: mergedVars
+        });
+
+        successCount++;
+        setSendLogs((prev) => [...prev, { phone: contact.phone, name: contact.name, status: "success", message: response.providerMessageId || "OK" }]);
+      } catch (error) {
+        failedCount++;
+        setSendLogs((prev) => [...prev, { phone: contact.phone, name: contact.name, status: "failed", message: formatError(error) }]);
+      }
+
+      setSendProgress({ sent: i + 1, total, success: successCount, failed: failedCount });
+
+      // 1 saniye bekle (son mesajdan sonra bekleme)
+      if (i < selectedContacts.length - 1 && !cancelRef.current) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     }
+
+    setIsSending(false);
+    await loadMessageStats();
   };
 
   const onLoadLogs = async () => {
@@ -542,7 +629,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>WhatsApp Toplu Mesajlaşma</h1>
+        <h1>WhatsApp Mesajlaşma</h1>
         <div className="row">
           <p>
             {currentUser.username} ({currentUser.role}) • Backend: {backendStatusLabel}
@@ -783,38 +870,130 @@ function App() {
           </div>
 
           <div>
-            <h2>Toplu Gönderim</h2>
-            <form onSubmit={onSendBatchMessage} className="form">
-              <select value={batchSendForm.templateId} onChange={(event) => setBatchSendForm({ ...batchSendForm, templateId: event.target.value })} required>
+            <h2>Grup Gönderim</h2>
+
+            {/* Tag seçimi */}
+            {availableTags.length > 0 && (
+              <div style={{ marginBottom: "12px" }}>
+                <p style={{ margin: "0 0 8px", fontWeight: 600, color: "var(--muted)", fontSize: "13px" }}>Tag ile filtrele:</p>
+                <div className="tag-chips">
+                  {availableTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={selectedTags.includes(tag) ? "tag-chip active" : "tag-chip"}
+                      onClick={() => onToggleTag(tag)}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={onSendGroupMessages} className="form">
+              <select
+                value={groupSendForm.templateId}
+                onChange={(event) => setGroupSendForm({ ...groupSendForm, templateId: event.target.value })}
+                disabled={isSending}
+                required
+              >
                 <option value="">Template seç</option>
                 {templates.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
               </select>
-              {isMediaHeaderTemplate(selectedBatchTemplate) && (
+              {isMediaHeaderTemplate(selectedGroupTemplate) && (
                 <input
                   placeholder="Media URL (header image/video/document için zorunlu)"
-                  value={batchSendForm.mediaUrl}
-                  onChange={(event) => setBatchSendForm({ ...batchSendForm, mediaUrl: event.target.value })}
+                  value={groupSendForm.mediaUrl}
+                  onChange={(event) => setGroupSendForm({ ...groupSendForm, mediaUrl: event.target.value })}
+                  disabled={isSending}
                   required
                 />
               )}
-              <textarea value={batchSendForm.variablesJson} onChange={(event) => setBatchSendForm({ ...batchSendForm, variablesJson: event.target.value })} />
+              <textarea
+                value={groupSendForm.variablesJson}
+                onChange={(event) => setGroupSendForm({ ...groupSendForm, variablesJson: event.target.value })}
+                disabled={isSending}
+                placeholder='Değişkenler (JSON) — örn: {"name":"Ahmet"}'
+              />
+
               <div className="row">
-                <button type="button" onClick={onSelectAllBatchContacts}>Tümünü Seç</button>
-                <button type="button" onClick={onClearBatchContacts}>Seçimi Temizle</button>
+                <button type="button" onClick={onSelectAllGroupContacts} disabled={isSending}>Tümünü Seç</button>
+                <button type="button" onClick={onClearGroupContacts} disabled={isSending}>Seçimi Temizle</button>
+                <span style={{ marginLeft: "auto", fontWeight: 600, color: "var(--muted)", fontSize: "13px" }}>
+                  {groupSendForm.contactIds.length} kişi seçili
+                </span>
               </div>
+
               <div className="list contact-select-list">
-                {contacts.map((item) => (
+                {filteredGroupContacts.map((item) => (
                   <label key={item._id} className="contact-select-item">
                     <input
                       type="checkbox"
-                      checked={batchSendForm.contactIds.includes(item._id)}
-                      onChange={() => onToggleBatchContact(item._id)}
+                      checked={groupSendForm.contactIds.includes(item._id)}
+                      onChange={() => onToggleGroupContact(item._id)}
+                      disabled={isSending}
                     />
-                    <span>{item.name || "-"} • {item.phone}</span>
+                    <span>{item.name || "-"} • {item.phone} {item.tag ? `• ${item.tag}` : ""}</span>
                   </label>
                 ))}
               </div>
-              <button type="submit">Toplu Gönder ({batchSendForm.contactIds.length})</button>
+
+              {/* Gönderim ilerleme alanı */}
+              {isSending && (
+                <div className="send-progress">
+                  <div className="progress-header">
+                    <span>Gönderiliyor: {sendProgress.sent} / {sendProgress.total}</span>
+                    <button type="button" className="btn-cancel" onClick={onCancelSending}>Durdur</button>
+                  </div>
+                  <div className="progress-bar-track">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: sendProgress.total > 0 ? `${(sendProgress.sent / sendProgress.total) * 100}%` : "0%" }}
+                    />
+                  </div>
+                  <div className="progress-stats">
+                    <span className="stat-success">✓ {sendProgress.success}</span>
+                    <span className="stat-failed">✗ {sendProgress.failed}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* İlerleme bittikten sonra özet */}
+              {!isSending && sendProgress.total > 0 && (
+                <div className="send-progress">
+                  <div className="progress-header">
+                    <span>Tamamlandı: {sendProgress.sent} / {sendProgress.total}</span>
+                  </div>
+                  <div className="progress-bar-track">
+                    <div className="progress-bar-fill done" style={{ width: "100%" }} />
+                  </div>
+                  <div className="progress-stats">
+                    <span className="stat-success">✓ Başarılı: {sendProgress.success}</span>
+                    <span className="stat-failed">✗ Hatalı: {sendProgress.failed}</span>
+                    {cancelRef.current && <span style={{ color: "var(--warning)" }}>⚠ Durduruldu</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Mesaj logları */}
+              {sendLogs.length > 0 && (
+                <div className="send-log-list">
+                  {sendLogs.map((log, idx) => (
+                    <div key={idx} className={`send-log-item ${log.status}`}>
+                      <span className="send-log-status">{log.status === "success" ? "✓" : log.status === "failed" ? "✗" : "⚠"}</span>
+                      <span>{log.name || log.phone} • {log.phone}</span>
+                      <span className="send-log-msg">{log.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!isSending && (
+                <button type="submit" disabled={groupSendForm.contactIds.length === 0}>
+                  Gönder ({groupSendForm.contactIds.length} kişi)
+                </button>
+              )}
             </form>
             {sendResult && <pre className="info">{sendResult}</pre>}
           </div>
