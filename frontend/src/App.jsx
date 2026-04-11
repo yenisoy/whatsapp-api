@@ -867,22 +867,19 @@ function App() { // NOSONAR
             </div>
             {expandedTemplateId === item._id && (
               <div className="template-detail-card">
-                <div className="template-preview-sections">
+                <div className="template-preview-shell template-preview-compact">
                   <div className="template-preview-section template-preview-header">
-                    <span className="template-preview-label">Header</span>
                     {headerPreview}
                     {mediaHeaderPreview}
                     {fallbackHeaderPreview}
                   </div>
 
                   <div className="template-preview-section template-preview-body">
-                    <span className="template-preview-label">Mesaj</span>
                     <p className="template-preview-message">{item.content || "-"}</p>
                   </div>
 
                   {item.footerText && (
                     <div className="template-preview-section template-preview-footer">
-                      <span className="template-preview-label">Footer</span>
                       <p className="template-preview-text muted">{item.footerText}</p>
                     </div>
                   )}

@@ -367,6 +367,7 @@ label {
   font-weight: 800;
   letter-spacing: 0.5px;
   box-shadow: 0 8px 16px rgba(79, 70, 229, 0.18);
+}
 
 .template-panel {
   display: grid;
@@ -586,6 +587,22 @@ label {
   flex-wrap: wrap;
 }
 
+.template-card-title-row strong {
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.template-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.template-chip-row .meta-pill,
+.template-chip-row .status-badge {
+  margin-left: 0;
+}
+
 .template-item-meta {
   flex-shrink: 0;
   color: var(--muted);
@@ -595,12 +612,6 @@ label {
 
 .template-card-title-row strong {
   font-size: 15px;
-}
-
-.template-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .template-body-snippet {
@@ -655,6 +666,11 @@ label {
   background: #ffffff;
 }
 
+.template-preview-shell {
+  display: grid;
+  gap: 12px;
+}
+
 .template-preview-header {
   background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
 }
@@ -701,6 +717,36 @@ label {
 .template-media-preview {
   display: grid;
   gap: 8px;
+}
+
+.template-preview-compact {
+  display: grid;
+  gap: 10px;
+}
+
+.template-preview-compact .template-preview-text,
+.template-preview-compact .template-preview-message {
+  font-size: 14px;
+}
+
+.template-preview-compact .template-preview-text.strong {
+  font-size: 15px;
+}
+
+.template-preview-compact .template-media-preview {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8faff;
+  border: 1px solid #dbe3ff;
+}
+
+.template-preview-compact .template-preview-footer {
+  padding-top: 6px;
+  border-top: 1px solid #e5ebff;
+}
+
+.template-preview-compact .meta-pill {
+  width: fit-content;
 }
 
 .template-summary {
