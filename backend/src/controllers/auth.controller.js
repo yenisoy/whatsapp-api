@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
+import { getRequestBaseUrl, resolvePublicMediaUrl } from "../utils/user-media-storage.js";
 
 const getJwtSecret = () => process.env.JWT_SECRET || "dev-secret-change-me";
 
@@ -18,7 +19,7 @@ const buildToken = (user) => {
   );
 };
 
-const serializeUser = (user) => ({
+const serializeUser = (user, baseUrl = "") => ({
   id: String(user._id),
   username: user.username,
   role: user.role,
@@ -28,7 +29,7 @@ const serializeUser = (user) => ({
   mediaFileName: user.mediaFileName || "",
   mediaOriginalName: user.mediaOriginalName || "",
   mediaMimeType: user.mediaMimeType || "",
-  mediaUrl: user.mediaUrl || "",
+  mediaUrl: resolvePublicMediaUrl(user.mediaUrl || "", baseUrl),
   mediaSourceUrl: user.mediaSourceUrl || "",
   mediaUpdatedAt: user.mediaUpdatedAt || null
 });
@@ -53,10 +54,11 @@ export const login = async (req, res, next) => {
     }
 
     const token = buildToken(user);
+    const baseUrl = getRequestBaseUrl(req);
 
     return res.json({
       token,
-      user: serializeUser(user)
+      user: serializeUser(user, baseUrl)
     });
   } catch (error) {
     return next(error);
@@ -70,7 +72,9 @@ export const me = async (req, res, next) => {
       return res.status(404).json({ message: "user not found" });
     }
 
-    return res.json({ user: serializeUser(user) });
+    const baseUrl = getRequestBaseUrl(req);
+
+    return res.json({ user: serializeUser(user, baseUrl) });
   } catch (error) {
     return next(error);
   }

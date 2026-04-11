@@ -2,6 +2,7 @@ import Contact from "../models/contact.model.js";
 import Template from "../models/template.model.js";
 import { enqueueBatchSendJob } from "../queues/send-batch.queue.js";
 import { sendWithTemplate } from "../services/message-send.service.js";
+import { getRequestBaseUrl } from "../utils/user-media-storage.js";
 
 export const sendSingleMessage = async (req, res, next) => {
   try {
@@ -21,12 +22,15 @@ export const sendSingleMessage = async (req, res, next) => {
       return res.status(400).json({ message: "mediaUrl is required for media header templates" });
     }
 
+    const baseUrl = getRequestBaseUrl(req);
+
     const result = await sendWithTemplate({
       ownerId: req.user.id,
       phone,
       template,
       variables,
       mediaUrl,
+      publicBaseUrl: baseUrl,
       credentials: {
         whatsappToken: req.user?.whatsappToken,
         whatsappPhoneId: req.user?.whatsappPhoneId
@@ -66,6 +70,8 @@ export const sendBatchMessage = async (req, res, next) => {
       return res.status(400).json({ message: "mediaUrl is required for media header templates" });
     }
 
+    const baseUrl = getRequestBaseUrl(req);
+
     const contacts = await Contact.find({ ownerId: req.user.id, _id: { $in: contactIds } });
     if (!contacts.length) {
       return res.status(404).json({ message: "contacts not found" });
@@ -80,7 +86,8 @@ export const sendBatchMessage = async (req, res, next) => {
         contactId: contact._id,
         templateId: template._id,
         variables,
-        mediaUrl
+        mediaUrl,
+        publicBaseUrl: baseUrl
       });
 
       jobs.push({

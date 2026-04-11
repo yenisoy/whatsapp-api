@@ -19,6 +19,18 @@ const MIME_EXTENSION_MAP = {
 
 const buildUserDir = (userId) => path.join(MEDIA_ROOT, String(userId));
 
+export const getRequestBaseUrl = (req) => {
+  const forwardedProto = String(req?.headers?.["x-forwarded-proto"] || "").split(",")[0].trim();
+  const protocol = forwardedProto || req?.protocol || "http";
+  const host = String(req?.headers?.["x-forwarded-host"] || req?.get?.("host") || "").split(",")[0].trim();
+
+  if (!host) {
+    return "";
+  }
+
+  return `${protocol}://${host}`.replace(/\/$/, "");
+};
+
 const getPublicBaseUrl = () => {
   const configured = String(
     process.env.PUBLIC_BASE_URL ||
@@ -38,7 +50,7 @@ const getPublicBaseUrl = () => {
   return `http://${configured.replace(/^\/+/, "")}`.replace(/\/$/, "");
 };
 
-export const resolvePublicMediaUrl = (mediaUrl = "") => {
+export const resolvePublicMediaUrl = (mediaUrl = "", baseUrl = "") => {
   const value = String(mediaUrl || "").trim();
 
   if (!value) {
@@ -49,13 +61,13 @@ export const resolvePublicMediaUrl = (mediaUrl = "") => {
     return value;
   }
 
-  const baseUrl = getPublicBaseUrl();
-  if (!baseUrl) {
+  const resolvedBaseUrl = String(baseUrl || "").trim() || getPublicBaseUrl();
+  if (!resolvedBaseUrl) {
     return value;
   }
 
   try {
-    return new URL(value, baseUrl).toString();
+    return new URL(value, resolvedBaseUrl).toString();
   } catch {
     return value;
   }
@@ -94,7 +106,7 @@ export const removeUserMediaFiles = async (userId) => {
   await fs.rm(dir, { recursive: true, force: true });
 };
 
-export const saveUserMediaBuffer = async ({ userId, buffer, mimeType, originalName, sourceUrl = "" }) => {
+export const saveUserMediaBuffer = async ({ userId, buffer, mimeType, originalName, sourceUrl = "", baseUrl = "" }) => {
   const dir = await ensureUserDir(userId);
   const extension = inferMediaExtension({ mimeType, originalName });
   const fileName = `current${extension}`;
@@ -107,7 +119,7 @@ export const saveUserMediaBuffer = async ({ userId, buffer, mimeType, originalNa
     mediaOriginalName: String(originalName || fileName),
     mediaMimeType: String(mimeType || "application/octet-stream"),
     mediaSourceUrl: String(sourceUrl || "").trim(),
-    mediaUrl: resolvePublicMediaUrl(buildUserMediaUrl(userId, fileName)),
+    mediaUrl: resolvePublicMediaUrl(buildUserMediaUrl(userId, fileName), baseUrl),
     mediaUpdatedAt: new Date()
   };
 };

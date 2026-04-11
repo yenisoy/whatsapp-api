@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
-import { removeUserMediaFiles, resolvePublicMediaUrl, saveUserMediaBuffer } from "../utils/user-media-storage.js";
+import { getRequestBaseUrl, removeUserMediaFiles, resolvePublicMediaUrl, saveUserMediaBuffer } from "../utils/user-media-storage.js";
 
 const fetchRemoteMedia = async (sourceUrl) => {
   const url = String(sourceUrl || "").trim();
@@ -36,7 +36,7 @@ const fetchRemoteMedia = async (sourceUrl) => {
   };
 };
 
-const sanitizeUser = (user) => ({
+const sanitizeUser = (user, baseUrl = "") => ({
   id: String(user._id),
   username: user.username,
   role: user.role,
@@ -46,7 +46,7 @@ const sanitizeUser = (user) => ({
   mediaFileName: user.mediaFileName || "",
   mediaOriginalName: user.mediaOriginalName || "",
   mediaMimeType: user.mediaMimeType || "",
-  mediaUrl: resolvePublicMediaUrl(user.mediaUrl || ""),
+  mediaUrl: resolvePublicMediaUrl(user.mediaUrl || "", baseUrl),
   mediaSourceUrl: user.mediaSourceUrl || "",
   mediaUpdatedAt: user.mediaUpdatedAt || null,
   createdAt: user.createdAt,
@@ -56,7 +56,8 @@ const sanitizeUser = (user) => ({
 export const listUsers = async (req, res, next) => {
   try {
     const users = await User.find({}).sort({ createdAt: -1 });
-    return res.json(users.map(sanitizeUser));
+    const baseUrl = getRequestBaseUrl(req);
+    return res.json(users.map((user) => sanitizeUser(user, baseUrl)));
   } catch (error) {
     return next(error);
   }
@@ -88,7 +89,7 @@ export const createUser = async (req, res, next) => {
       role
     });
 
-    return res.status(201).json(sanitizeUser(created));
+    return res.status(201).json(sanitizeUser(created, getRequestBaseUrl(req)));
   } catch (error) {
     return next(error);
   }
@@ -134,10 +135,11 @@ export const updateMyProfile = async (req, res, next) => {
     }
 
     await user.save();
+    const baseUrl = getRequestBaseUrl(req);
 
     return res.json({
       message: "profile updated",
-      user: sanitizeUser(user)
+      user: sanitizeUser(user, baseUrl)
     });
   } catch (error) {
     return next(error);
@@ -151,11 +153,13 @@ export const getMyMedia = async (req, res, next) => {
       return res.status(404).json({ message: "user not found" });
     }
 
+    const baseUrl = getRequestBaseUrl(req);
+
     return res.json({
       mediaFileName: user.mediaFileName || "",
       mediaOriginalName: user.mediaOriginalName || "",
       mediaMimeType: user.mediaMimeType || "",
-      mediaUrl: resolvePublicMediaUrl(user.mediaUrl || ""),
+      mediaUrl: resolvePublicMediaUrl(user.mediaUrl || "", baseUrl),
       mediaSourceUrl: user.mediaSourceUrl || "",
       mediaUpdatedAt: user.mediaUpdatedAt || null
     });
@@ -195,13 +199,16 @@ export const uploadMyMedia = async (req, res, next) => {
       return res.status(400).json({ message: "file or sourceUrl is required" });
     }
 
+    const baseUrl = getRequestBaseUrl(req);
+
     const previousFileName = user.mediaFileName || "";
     const media = await saveUserMediaBuffer({
       userId: user._id,
       buffer,
       mimeType,
       originalName,
-      sourceUrl: resolvedSourceUrl
+      sourceUrl: resolvedSourceUrl,
+      baseUrl
     });
 
     user.mediaFileName = media.mediaFileName;
@@ -219,7 +226,8 @@ export const uploadMyMedia = async (req, res, next) => {
         buffer,
         mimeType,
         originalName,
-        sourceUrl: resolvedSourceUrl
+        sourceUrl: resolvedSourceUrl,
+        baseUrl
       });
 
       user.mediaFileName = refreshed.mediaFileName;
@@ -233,7 +241,7 @@ export const uploadMyMedia = async (req, res, next) => {
 
     return res.json({
       message: "media updated",
-      user: sanitizeUser(user)
+      user: sanitizeUser(user, baseUrl)
     });
   } catch (error) {
     return next(error);
@@ -257,9 +265,11 @@ export const deleteMyMedia = async (req, res, next) => {
     user.mediaUpdatedAt = null;
     await user.save();
 
+    const baseUrl = getRequestBaseUrl(req);
+
     return res.json({
       message: "media deleted",
-      user: sanitizeUser(user)
+      user: sanitizeUser(user, baseUrl)
     });
   } catch (error) {
     return next(error);

@@ -79,7 +79,7 @@ const buildTemplateComponents = ({ template, variables = {}, mediaUrl = "" }) =>
   return components;
 };
 
-export const sendWithTemplate = async ({ ownerId, phone, contactId = null, template, variables = {}, mediaUrl = "", credentials = {} }) => {
+export const sendWithTemplate = async ({ ownerId, phone, contactId = null, template, variables = {}, mediaUrl = "", publicBaseUrl = "", credentials = {} }) => {
   const normalizedPhone = normalizePhone(phone);
 
   if (!normalizedPhone) {
@@ -93,7 +93,7 @@ export const sendWithTemplate = async ({ ownerId, phone, contactId = null, templ
     throw new Error("mediaUrl is required for media header templates");
   }
 
-  const resolvedMediaUrl = resolvePublicMediaUrl(mediaUrl);
+  const resolvedMediaUrl = resolvePublicMediaUrl(mediaUrl, publicBaseUrl);
 
   if (isMediaTemplate && !String(resolvedMediaUrl || "").trim()) {
     throw new Error("mediaUrl could not be resolved to a public URL");

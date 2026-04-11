@@ -29,6 +29,31 @@ const compareTemplatesByMetaOrder = (first, second) => {
   return secondLocal - firstLocal;
 };
 
+const getApiBaseUrl = () => String(import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
+
+const toPublicMediaUrl = (mediaUrl = "") => {
+  const value = String(mediaUrl || "").trim();
+
+  if (!value) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  const baseUrl = getApiBaseUrl();
+  if (!baseUrl) {
+    return value;
+  }
+
+  try {
+    return new URL(value, baseUrl).toString();
+  } catch {
+    return value;
+  }
+};
+
 const getContactInitials = (contact = {}) => {
   const name = String(contact?.name || "").trim();
   const phone = String(contact?.phone || "").trim();
@@ -916,24 +941,30 @@ function App() { // NOSONAR
   };
 
   const useMyMediaForSingle = () => {
-    if (!currentUser?.mediaUrl) {
+    const mediaUrl = toPublicMediaUrl(currentUser?.mediaUrl || "");
+
+    if (!mediaUrl) {
       setSendResult("Önce profil medya alanına dosya veya link yükleyin");
       return;
     }
 
-    setSingleSendForm((current) => ({ ...current, mediaUrl: currentUser.mediaUrl }));
+    setSingleSendForm((current) => ({ ...current, mediaUrl }));
     setSendResult("Profil medyası tekli gönderime eklendi");
   };
 
   const useMyMediaForGroup = () => {
-    if (!currentUser?.mediaUrl) {
+    const mediaUrl = toPublicMediaUrl(currentUser?.mediaUrl || "");
+
+    if (!mediaUrl) {
       setSendResult("Önce profil medya alanına dosya veya link yükleyin");
       return;
     }
 
-    setGroupSendForm((current) => ({ ...current, mediaUrl: currentUser.mediaUrl }));
+    setGroupSendForm((current) => ({ ...current, mediaUrl }));
     setSendResult("Profil medyası grup gönderime eklendi");
   };
+
+  const publicCurrentMediaUrl = toPublicMediaUrl(currentUser?.mediaUrl || "");
 
   let templateListContent;
 
@@ -1501,7 +1532,7 @@ function App() { // NOSONAR
                 )}
 
                 {singleSendTemplateInfo?.needsMedia && currentUser?.mediaUrl && (
-                  <p className="send-media-hint">Kayıtlı medya: {currentUser.mediaUrl}</p>
+                  <p className="send-media-hint">Kayıtlı medya: {publicCurrentMediaUrl || currentUser.mediaUrl}</p>
                 )}
 
                 {singleSendTemplateInfo?.needsMedia && sendMediaResult && <p className="info">{sendMediaResult}</p>}
@@ -1604,7 +1635,7 @@ function App() { // NOSONAR
                 )}
 
                 {groupSendTemplateInfo?.needsMedia && currentUser?.mediaUrl && (
-                  <p className="send-media-hint">Kayıtlı medya: {currentUser.mediaUrl}</p>
+                  <p className="send-media-hint">Kayıtlı medya: {publicCurrentMediaUrl || currentUser.mediaUrl}</p>
                 )}
 
                 {groupSendTemplateInfo?.needsMedia && sendMediaResult && <p className="info">{sendMediaResult}</p>}
@@ -1752,7 +1783,7 @@ function App() { // NOSONAR
                   {currentUser?.mediaUrl ? (
                     <>
                       <strong>{currentUser.mediaOriginalName || currentUser.mediaFileName || "Media"}</strong>
-                      <a href={currentUser.mediaUrl} target="_blank" rel="noreferrer">{currentUser.mediaUrl}</a>
+                      <a href={publicCurrentMediaUrl || currentUser.mediaUrl} target="_blank" rel="noreferrer">{publicCurrentMediaUrl || currentUser.mediaUrl}</a>
                       {currentUser.mediaSourceUrl && <small>Kaynak: {currentUser.mediaSourceUrl}</small>}
                     </>
                   ) : (
