@@ -761,7 +761,105 @@ label {
 .template-list li.template-item {
   display: grid;
 }
-  flex-shrink: 0;
+
+.send-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.send-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.send-header-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.send-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 16px;
+}
+
+.send-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+}
+
+.send-card .compact-form {
+  gap: 12px;
+}
+
+.send-template-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.send-mini-preview,
+.send-template-preview,
+.send-tag-filter-box {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #dbe3ff;
+  background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
+}
+
+.send-mini-preview strong,
+.send-template-preview p {
+  margin: 0;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.send-template-preview p {
+  color: var(--muted);
+}
+
+.send-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.send-selected-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.send-contact-list {
+  max-height: 270px;
+}
+
+.send-contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.send-contact-item span {
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.send-card .info {
+  margin-top: 0;
 }
 
 .contact-meta {
@@ -973,7 +1071,7 @@ button:hover {
 }
 
 .template-list li.template-item {
-  display: block;
+  display: grid;
 }
 
 .status-badge {
@@ -1120,6 +1218,26 @@ button:hover {
 
   .template-item-meta {
     text-align: left;
+  }
+
+  .send-header,
+  .send-workspace {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .send-header-stats {
+    width: 100%;
+  }
+
+  .send-selected-count {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .send-actions-row .secondary-action,
+  .send-actions-row .tag-chip {
+    flex: 1 1 0;
   }
 }
 

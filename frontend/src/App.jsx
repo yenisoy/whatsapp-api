@@ -244,6 +244,24 @@ function App() { // NOSONAR
 
   const isMediaHeaderTemplate = (template) => ["image", "video", "document"].includes(String(template?.headerType || "").toLowerCase());
 
+  const singleSendTemplateInfo = selectedSingleTemplate ? {
+    language: selectedSingleTemplate.language || "-",
+    category: selectedSingleTemplate.category || "UTILITY",
+    headerType: String(selectedSingleTemplate.headerType || "none").toUpperCase(),
+    status: selectedSingleTemplate.status || "pending",
+    metaStatus: selectedSingleTemplate.metaStatus || "-",
+    needsMedia: isMediaHeaderTemplate(selectedSingleTemplate)
+  } : null;
+
+  const groupSendTemplateInfo = selectedGroupTemplate ? {
+    language: selectedGroupTemplate.language || "-",
+    category: selectedGroupTemplate.category || "UTILITY",
+    headerType: String(selectedGroupTemplate.headerType || "none").toUpperCase(),
+    status: selectedGroupTemplate.status || "pending",
+    metaStatus: selectedGroupTemplate.metaStatus || "-",
+    needsMedia: isMediaHeaderTemplate(selectedGroupTemplate)
+  } : null;
+
   useEffect(() => {
     setContactPage(1);
   }, [contactQuery, contactTagFilters, contactPageSize]);
@@ -1275,159 +1293,211 @@ function App() { // NOSONAR
       )}
 
       {activeTab === "send" && (
-        <section className="panel two-col">
-          <div>
-            <h2>Tekli Gönderim</h2>
-            <form onSubmit={onSendSingleMessage} className="form">
-              <select
-                value={singleSendForm.contactId}
-                onChange={(event) => setSingleSendForm({ ...singleSendForm, contactId: event.target.value })}
-              >
-                <option value="">Contact seç (opsiyonel)</option>
-                {contacts.map((item) => <option key={item._id} value={item._id}>{item.name || item.phone} • {item.phone}</option>)}
-              </select>
-              <input
-                placeholder="Telefon"
-                value={selectedSingleContact?.phone || singleSendForm.phone}
-                onChange={(event) => setSingleSendForm({ ...singleSendForm, contactId: "", phone: event.target.value })}
-                required
-              />
-              <select value={singleSendForm.templateId} onChange={(event) => setSingleSendForm({ ...singleSendForm, templateId: event.target.value })} required>
-                <option value="">Template seç</option>
-                {templates.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
-              </select>
-              {isMediaHeaderTemplate(selectedSingleTemplate) && (
-                <input
-                  placeholder="Media URL (header image/video/document için zorunlu)"
-                  value={singleSendForm.mediaUrl}
-                  onChange={(event) => setSingleSendForm({ ...singleSendForm, mediaUrl: event.target.value })}
-                  required
-                />
-              )}
-              <textarea value={singleSendForm.variablesJson} onChange={(event) => setSingleSendForm({ ...singleSendForm, variablesJson: event.target.value })} />
-              <button type="submit">Gönder</button>
-            </form>
+        <section className="panel send-panel">
+          <div className="send-header">
+            <div>
+              <h2>Send Merkezi</h2>
+              <p className="section-caption">Tekli ve grup gönderimleri aynı tasarım dilinde, daha okunur ve kontrollü.</p>
+            </div>
+            <div className="send-header-stats">
+              <div className="stat-pill"><strong>{contacts.length}</strong><span>Contact</span></div>
+              <div className="stat-pill"><strong>{templates.length}</strong><span>Template</span></div>
+              <div className="stat-pill"><strong>{selectedTags.length}</strong><span>Tag</span></div>
+            </div>
           </div>
 
-          <div>
-            <h2>Grup Gönderim</h2>
-
-            {/* Tag seçimi */}
-            {availableTags.length > 0 && (
-              <div style={{ marginBottom: "12px" }}>
-                <p style={{ margin: "0 0 8px", fontWeight: 600, color: "var(--muted)", fontSize: "13px" }}>Tag ile filtrele:</p>
-                <div className="tag-chips">
-                  {availableTags.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      className={selectedTags.includes(tag) ? "tag-chip active" : "tag-chip"}
-                      onClick={() => onToggleTag(tag)}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
+          <div className="send-workspace">
+            <div className="send-card">
+              <div className="card-title-block">
+                <h3>Tekli Gönderim</h3>
+                <p>Contact seç veya numara yaz, template seç ve önizleme bilgilerini kontrol et.</p>
               </div>
-            )}
 
-            <form onSubmit={onSendGroupMessages} className="form">
-              <select
-                value={groupSendForm.templateId}
-                onChange={(event) => setGroupSendForm({ ...groupSendForm, templateId: event.target.value })}
-                disabled={isSending}
-                required
-              >
-                <option value="">Template seç</option>
-                {templates.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
-              </select>
-              {isMediaHeaderTemplate(selectedGroupTemplate) && (
+              <form onSubmit={onSendSingleMessage} className="form compact-form">
+                <select
+                  value={singleSendForm.contactId}
+                  onChange={(event) => setSingleSendForm({ ...singleSendForm, contactId: event.target.value })}
+                >
+                  <option value="">Contact seç (opsiyonel)</option>
+                  {contacts.map((item) => <option key={item._id} value={item._id}>{item.name || item.phone} • {item.phone}</option>)}
+                </select>
+
+                <div className="send-mini-preview">
+                  <span className="template-preview-label">Seçili contact</span>
+                  <strong>{selectedSingleContact ? `${selectedSingleContact.name || "İsimsiz"} • ${selectedSingleContact.phone}` : "Telefon ile devam edebilirsin"}</strong>
+                </div>
+
                 <input
-                  placeholder="Media URL (header image/video/document için zorunlu)"
-                  value={groupSendForm.mediaUrl}
-                  onChange={(event) => setGroupSendForm({ ...groupSendForm, mediaUrl: event.target.value })}
-                  disabled={isSending}
+                  placeholder="Telefon"
+                  value={selectedSingleContact?.phone || singleSendForm.phone}
+                  onChange={(event) => setSingleSendForm({ ...singleSendForm, contactId: "", phone: event.target.value })}
                   required
                 />
+
+                <select value={singleSendForm.templateId} onChange={(event) => setSingleSendForm({ ...singleSendForm, templateId: event.target.value })} required>
+                  <option value="">Template seç</option>
+                  {templates.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
+                </select>
+
+                {singleSendTemplateInfo && (
+                  <div className="send-template-meta">
+                    <span className="meta-pill">{singleSendTemplateInfo.language}</span>
+                    <span className="meta-pill">{singleSendTemplateInfo.category}</span>
+                    <span className="meta-pill">{singleSendTemplateInfo.headerType}</span>
+                    <span className="meta-pill light">Meta: {singleSendTemplateInfo.metaStatus}</span>
+                    <span className={`status-badge status-${singleSendTemplateInfo.status}`}>{singleSendTemplateInfo.status}</span>
+                  </div>
+                )}
+
+                {singleSendTemplateInfo?.needsMedia && (
+                  <input
+                    placeholder="Media URL (header image/video/document için zorunlu)"
+                    value={singleSendForm.mediaUrl}
+                    onChange={(event) => setSingleSendForm({ ...singleSendForm, mediaUrl: event.target.value })}
+                    required
+                  />
+                )}
+
+                <textarea value={singleSendForm.variablesJson} onChange={(event) => setSingleSendForm({ ...singleSendForm, variablesJson: event.target.value })} />
+                <button type="submit">Gönder</button>
+              </form>
+
+              {singleSendTemplateInfo && (
+                <div className="send-template-preview">
+                  <span className="template-preview-label">Template özeti</span>
+                  <p>{selectedSingleTemplate?.content || "İçerik yok"}</p>
+                </div>
               )}
-              <textarea
-                value={groupSendForm.variablesJson}
-                onChange={(event) => setGroupSendForm({ ...groupSendForm, variablesJson: event.target.value })}
-                disabled={isSending}
-                placeholder='Değişkenler (JSON) — örn: {"name":"Ahmet"}'
-              />
+            </div>
 
-              <div className="row">
-                <button type="button" onClick={onSelectAllGroupContacts} disabled={isSending}>Tümünü Seç</button>
-                <button type="button" onClick={onClearGroupContacts} disabled={isSending}>Seçimi Temizle</button>
-                <span style={{ marginLeft: "auto", fontWeight: 600, color: "var(--muted)", fontSize: "13px" }}>
-                  {groupSendForm.contactIds.length} kişi seçili
-                </span>
+            <div className="send-card">
+              <div className="card-title-block">
+                <h3>Grup Gönderim</h3>
+                <p>Tag filtreleri, kişileri seçme, ilerleme ve loglar aynı kart içinde.</p>
               </div>
 
-              <div className="list contact-select-list">
-                {filteredGroupContacts.map((item) => (
-                  <label key={item._id} className="contact-select-item">
-                    <input
-                      type="checkbox"
-                      checked={groupSendForm.contactIds.includes(item._id)}
-                      onChange={() => onToggleGroupContact(item._id)}
-                      disabled={isSending}
-                    />
-                    <span>{item.name || "-"} • {item.phone} {item.tag ? `• ${item.tag}` : ""}</span>
-                  </label>
-                ))}
-              </div>
-
-              {/* Gönderim ilerleme alanı */}
-              {isSending && (
-                <div className="send-progress">
-                  <div className="progress-header">
-                    <span>Gönderiliyor: {sendProgress.sent} / {sendProgress.total}</span>
-                    <button type="button" className="btn-cancel" onClick={onCancelSending}>Durdur</button>
-                  </div>
-                  <div className="progress-bar-track">
-                    <div
-                      className="progress-bar-fill"
-                      style={{ width: sendProgress.total > 0 ? `${(sendProgress.sent / sendProgress.total) * 100}%` : "0%" }}
-                    />
-                  </div>
-                  <div className="progress-stats">
-                    <span className="stat-success">✓ {sendProgress.success}</span>
-                    <span className="stat-failed">✗ {sendProgress.failed}</span>
+              {availableTags.length > 0 && (
+                <div className="send-tag-filter-box">
+                  <span className="template-preview-label">Tag ile filtrele</span>
+                  <div className="tag-chips">
+                    {availableTags.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        className={selectedTags.includes(tag) ? "tag-chip active" : "tag-chip"}
+                        onClick={() => onToggleTag(tag)}
+                      >
+                        {tag}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* İlerleme bittikten sonra özet */}
-              {!isSending && sendProgress.total > 0 && (
-                <div className="send-progress">
-                  <div className="progress-header">
-                    <span>Tamamlandı: {sendProgress.sent} / {sendProgress.total}</span>
+              <form onSubmit={onSendGroupMessages} className="form compact-form">
+                <select
+                  value={groupSendForm.templateId}
+                  onChange={(event) => setGroupSendForm({ ...groupSendForm, templateId: event.target.value })}
+                  disabled={isSending}
+                  required
+                >
+                  <option value="">Template seç</option>
+                  {templates.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
+                </select>
+
+                {groupSendTemplateInfo && (
+                  <div className="send-template-meta">
+                    <span className="meta-pill">{groupSendTemplateInfo.language}</span>
+                    <span className="meta-pill">{groupSendTemplateInfo.category}</span>
+                    <span className="meta-pill">{groupSendTemplateInfo.headerType}</span>
+                    <span className="meta-pill light">Meta: {groupSendTemplateInfo.metaStatus}</span>
+                    <span className={`status-badge status-${groupSendTemplateInfo.status}`}>{groupSendTemplateInfo.status}</span>
                   </div>
-                  <div className="progress-bar-track">
-                    <div className="progress-bar-fill done" style={{ width: "100%" }} />
-                  </div>
-                  <div className="progress-stats">
-                    <span className="stat-success">✓ Başarılı: {sendProgress.success}</span>
-                    <span className="stat-failed">✗ Hatalı: {sendProgress.failed}</span>
-                    {cancelRef.current && <span style={{ color: "var(--warning)" }}>⚠ Durduruldu</span>}
-                  </div>
+                )}
+
+                {groupSendTemplateInfo?.needsMedia && (
+                  <input
+                    placeholder="Media URL (header image/video/document için zorunlu)"
+                    value={groupSendForm.mediaUrl}
+                    onChange={(event) => setGroupSendForm({ ...groupSendForm, mediaUrl: event.target.value })}
+                    disabled={isSending}
+                    required
+                  />
+                )}
+
+                <textarea
+                  value={groupSendForm.variablesJson}
+                  onChange={(event) => setGroupSendForm({ ...groupSendForm, variablesJson: event.target.value })}
+                  disabled={isSending}
+                  placeholder='Değişkenler (JSON) — örn: {"name":"Ahmet"}'
+                />
+
+                <div className="send-actions-row">
+                  <button type="button" className="secondary-action" onClick={onSelectAllGroupContacts} disabled={isSending}>Tümünü Seç</button>
+                  <button type="button" className="secondary-action" onClick={onClearGroupContacts} disabled={isSending}>Seçimi Temizle</button>
+                  <span className="send-selected-count">{groupSendForm.contactIds.length} kişi seçili</span>
                 </div>
-              )}
 
-              {/* Mesaj logları */}
-              {sendLogs.length > 0 && (
-                <div className="send-log-list">{sendLogItems}</div>
-              )}
+                <div className="list contact-select-list send-contact-list">
+                  {filteredGroupContacts.map((item) => (
+                    <label key={item._id} className="contact-select-item send-contact-item">
+                      <input
+                        type="checkbox"
+                        checked={groupSendForm.contactIds.includes(item._id)}
+                        onChange={() => onToggleGroupContact(item._id)}
+                        disabled={isSending}
+                      />
+                      <span>{item.name || "-"} • {item.phone} {item.tag ? `• ${item.tag}` : ""}</span>
+                    </label>
+                  ))}
+                </div>
 
-              {!isSending && (
-                <button type="submit" disabled={groupSendForm.contactIds.length === 0}>
-                  Gönder ({groupSendForm.contactIds.length} kişi)
+                {isSending && (
+                  <div className="send-progress">
+                    <div className="progress-header">
+                      <span>Gönderiliyor: {sendProgress.sent} / {sendProgress.total}</span>
+                      <button type="button" className="btn-cancel" onClick={onCancelSending}>Durdur</button>
+                    </div>
+                    <div className="progress-bar-track">
+                      <div
+                        className="progress-bar-fill"
+                        style={{ width: sendProgress.total > 0 ? `${(sendProgress.sent / sendProgress.total) * 100}%` : "0%" }}
+                      />
+                    </div>
+                    <div className="progress-stats">
+                      <span className="stat-success">✓ {sendProgress.success}</span>
+                      <span className="stat-failed">✗ {sendProgress.failed}</span>
+                    </div>
+                  </div>
+                )}
+
+                {!isSending && sendProgress.total > 0 && (
+                  <div className="send-progress">
+                    <div className="progress-header">
+                      <span>Tamamlandı: {sendProgress.sent} / {sendProgress.total}</span>
+                    </div>
+                    <div className="progress-bar-track">
+                      <div className="progress-bar-fill done" style={{ width: "100%" }} />
+                    </div>
+                    <div className="progress-stats">
+                      <span className="stat-success">✓ Başarılı: {sendProgress.success}</span>
+                      <span className="stat-failed">✗ Hatalı: {sendProgress.failed}</span>
+                      {cancelRef.current && <span style={{ color: "var(--warning)" }}>⚠ Durduruldu</span>}
+                    </div>
+                  </div>
+                )}
+
+                {sendLogs.length > 0 && (
+                  <div className="send-log-list">{sendLogItems}</div>
+                )}
+
+                <button type="submit" disabled={groupSendForm.contactIds.length === 0 || isSending}>
+                  {isSending ? "Gönderiliyor..." : `Gönder (${groupSendForm.contactIds.length} kişi)`}
                 </button>
-              )}
-            </form>
-            {sendResult && <pre className="info">{sendResult}</pre>}
+              </form>
+
+              {sendResult && <pre className="info">{sendResult}</pre>}
+            </div>
           </div>
         </section>
       )}
