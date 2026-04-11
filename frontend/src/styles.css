@@ -184,6 +184,7 @@ label {
 
 .compact-form {
   margin-top: 14px;
+  gap: 12px;
 }
 
 .import-box {
@@ -473,10 +474,6 @@ label {
   color: var(--muted);
 }
 
-.compact-form {
-  gap: 12px;
-}
-
 .template-media-box {
   display: grid;
   gap: 10px;
@@ -610,10 +607,6 @@ label {
   text-align: right;
 }
 
-.template-card-title-row strong {
-  font-size: 15px;
-}
-
 .template-body-snippet {
   padding: 12px 14px;
   border-radius: 14px;
@@ -673,10 +666,6 @@ label {
 
 .template-preview-header {
   background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
-}
-
-.template-preview-body {
-  background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
 }
 
 .template-preview-footer {
@@ -758,10 +747,6 @@ label {
   overflow: hidden;
 }
 
-.template-list li.template-item {
-  display: grid;
-}
-
 .send-panel {
   display: grid;
   gap: 16px;
@@ -784,6 +769,7 @@ label {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
   gap: 16px;
+  align-items: start;
 }
 
 .send-card {
@@ -794,6 +780,25 @@ label {
   border: 1px solid var(--border);
   background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+  align-self: start;
+}
+
+.send-workspace .send-card:first-child {
+  align-content: start;
+}
+
+.send-workspace .send-card:first-child .form {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.send-workspace .send-card:first-child .form > button[type="submit"] {
+  margin-top: auto;
+}
+
+.send-workspace .send-card:first-child .send-mini-preview {
+  margin-bottom: 2px;
 }
 
 .send-card .compact-form {
@@ -1224,6 +1229,10 @@ button:hover {
   .send-workspace {
     grid-template-columns: 1fr;
     flex-direction: column;
+  }
+
+  .send-workspace {
+    align-items: stretch;
   }
 
   .send-header-stats {
