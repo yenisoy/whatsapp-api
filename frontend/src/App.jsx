@@ -85,6 +85,7 @@ function App() { // NOSONAR
   const [expandedTemplateId, setExpandedTemplateId] = useState("");
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateLanguageFilter, setTemplateLanguageFilter] = useState("all");
+  const [templateCategoryFilter, setTemplateCategoryFilter] = useState("all");
   const [templateHeaderTypeFilter, setTemplateHeaderTypeFilter] = useState("all");
   const [templateStatusFilter, setTemplateStatusFilter] = useState("all");
   const [templateForm, setTemplateForm] = useState(defaultTemplateForm);
@@ -220,11 +221,12 @@ function App() { // NOSONAR
 
     return templates.filter((template) => {
       const matchesLanguage = templateLanguageFilter === "all" || String(template.language || "").toLowerCase() === templateLanguageFilter;
+      const matchesCategory = templateCategoryFilter === "all" || String(template.category || "UTILITY").toLowerCase() === templateCategoryFilter;
       const normalizedHeaderType = String(template.headerType || "none").toLowerCase();
       const matchesHeaderType = templateHeaderTypeFilter === "all" || normalizedHeaderType === templateHeaderTypeFilter;
       const matchesStatus = templateStatusFilter === "all" || String(template.status || "pending").toLowerCase() === templateStatusFilter;
 
-      if (!matchesLanguage || !matchesHeaderType || !matchesStatus) {
+      if (!matchesLanguage || !matchesCategory || !matchesHeaderType || !matchesStatus) {
         return false;
       }
 
@@ -238,7 +240,7 @@ function App() { // NOSONAR
 
       return haystack.includes(query);
     });
-  }, [templateHeaderTypeFilter, templateLanguageFilter, templateSearch, templateStatusFilter, templates]);
+  }, [templateCategoryFilter, templateHeaderTypeFilter, templateLanguageFilter, templateSearch, templateStatusFilter, templates]);
 
   const isMediaHeaderTemplate = (template) => ["image", "video", "document"].includes(String(template?.headerType || "").toLowerCase());
 
@@ -1237,6 +1239,12 @@ function App() { // NOSONAR
                 <option value="en">en</option>
                 <option value="en_us">en_US</option>
               </select>
+              <select value={templateCategoryFilter} onChange={(event) => setTemplateCategoryFilter(event.target.value)}>
+                <option value="all">Tüm tipler</option>
+                <option value="utility">UTILITY</option>
+                <option value="marketing">MARKETING</option>
+                <option value="authentication">AUTHENTICATION</option>
+              </select>
               <select value={templateHeaderTypeFilter} onChange={(event) => setTemplateHeaderTypeFilter(event.target.value)}>
                 <option value="all">Tüm headerlar</option>
                 <option value="none">Header yok</option>
@@ -1255,6 +1263,7 @@ function App() { // NOSONAR
             <div className="template-filter-summary">
               <span className="meta-pill light">Arama: {templateSearch || "-"}</span>
               <span className="meta-pill light">Dil: {templateLanguageFilter === "all" ? "Tümü" : templateLanguageFilter}</span>
+              <span className="meta-pill light">Tip: {templateCategoryFilter === "all" ? "Tümü" : templateCategoryFilter.toUpperCase()}</span>
               <span className="meta-pill light">Header: {templateHeaderTypeFilter === "all" ? "Tümü" : templateHeaderTypeFilter}</span>
               <span className="meta-pill light">Durum: {templateStatusFilter === "all" ? "Tümü" : templateStatusFilter}</span>
             </div>
