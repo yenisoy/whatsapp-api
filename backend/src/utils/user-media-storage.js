@@ -1,5 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 const MEDIA_ROOT = path.join(process.cwd(), "uploads", "user-media");
 
@@ -18,6 +18,48 @@ const MIME_EXTENSION_MAP = {
 };
 
 const buildUserDir = (userId) => path.join(MEDIA_ROOT, String(userId));
+
+const getPublicBaseUrl = () => {
+  const configured = String(
+    process.env.PUBLIC_BASE_URL ||
+    process.env.APP_PUBLIC_BASE_URL ||
+    process.env.VITE_API_BASE_URL ||
+    ""
+  ).trim();
+
+  if (!configured) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(configured)) {
+    return configured.replace(/\/$/, "");
+  }
+
+  return `http://${configured.replace(/^\/+/, "")}`.replace(/\/$/, "");
+};
+
+export const resolvePublicMediaUrl = (mediaUrl = "") => {
+  const value = String(mediaUrl || "").trim();
+
+  if (!value) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  const baseUrl = getPublicBaseUrl();
+  if (!baseUrl) {
+    return value;
+  }
+
+  try {
+    return new URL(value, baseUrl).toString();
+  } catch {
+    return value;
+  }
+};
 
 const ensureUserDir = async (userId) => {
   const dir = buildUserDir(userId);
@@ -65,7 +107,7 @@ export const saveUserMediaBuffer = async ({ userId, buffer, mimeType, originalNa
     mediaOriginalName: String(originalName || fileName),
     mediaMimeType: String(mimeType || "application/octet-stream"),
     mediaSourceUrl: String(sourceUrl || "").trim(),
-    mediaUrl: buildUserMediaUrl(userId, fileName),
+    mediaUrl: resolvePublicMediaUrl(buildUserMediaUrl(userId, fileName)),
     mediaUpdatedAt: new Date()
   };
 };

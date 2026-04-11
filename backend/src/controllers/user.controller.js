@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
-import { removeUserMediaFiles, saveUserMediaBuffer } from "../utils/user-media-storage.js";
+import { removeUserMediaFiles, resolvePublicMediaUrl, saveUserMediaBuffer } from "../utils/user-media-storage.js";
 
 const fetchRemoteMedia = async (sourceUrl) => {
   const url = String(sourceUrl || "").trim();
@@ -46,7 +46,7 @@ const sanitizeUser = (user) => ({
   mediaFileName: user.mediaFileName || "",
   mediaOriginalName: user.mediaOriginalName || "",
   mediaMimeType: user.mediaMimeType || "",
-  mediaUrl: user.mediaUrl || "",
+  mediaUrl: resolvePublicMediaUrl(user.mediaUrl || ""),
   mediaSourceUrl: user.mediaSourceUrl || "",
   mediaUpdatedAt: user.mediaUpdatedAt || null,
   createdAt: user.createdAt,
@@ -155,7 +155,7 @@ export const getMyMedia = async (req, res, next) => {
       mediaFileName: user.mediaFileName || "",
       mediaOriginalName: user.mediaOriginalName || "",
       mediaMimeType: user.mediaMimeType || "",
-      mediaUrl: user.mediaUrl || "",
+      mediaUrl: resolvePublicMediaUrl(user.mediaUrl || ""),
       mediaSourceUrl: user.mediaSourceUrl || "",
       mediaUpdatedAt: user.mediaUpdatedAt || null
     });

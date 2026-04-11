@@ -1,7 +1,7 @@
 import Message from "../models/message.model.js";
-import { sendWhatsAppTemplate, sendWhatsAppText } from "./whatsapp.service.js";
-import { renderTemplate } from "../utils/render-template.js";
+import { sendWhatsAppTemplate } from "./whatsapp.service.js";
 import { extractTemplateVariables } from "../utils/template-variables.js";
+import { resolvePublicMediaUrl } from "../utils/user-media-storage.js";
 
 const normalizePhone = (phone) => String(phone || "").replaceAll(/\D/g, "").trim();
 
@@ -53,7 +53,7 @@ const buildTemplateComponents = ({ template, variables = {}, mediaUrl = "" }) =>
         {
           type: headerType,
           [headerType]: {
-            link: String(mediaUrl || "").trim()
+            link: resolvePublicMediaUrl(mediaUrl)
           }
         }
       ]
@@ -93,6 +93,16 @@ export const sendWithTemplate = async ({ ownerId, phone, contactId = null, templ
     throw new Error("mediaUrl is required for media header templates");
   }
 
+  const resolvedMediaUrl = resolvePublicMediaUrl(mediaUrl);
+
+  if (isMediaTemplate && !String(resolvedMediaUrl || "").trim()) {
+    throw new Error("mediaUrl could not be resolved to a public URL");
+  }
+
+  if (isMediaTemplate && !/^https?:\/\//i.test(resolvedMediaUrl)) {
+    throw new Error("mediaUrl must be a publicly reachable absolute URL for WhatsApp media templates");
+  }
+
   const metaTemplateName = String(template?.metaTemplateName || template?.name || "").trim();
 
   if (!metaTemplateName) {
@@ -119,7 +129,7 @@ export const sendWithTemplate = async ({ ownerId, phone, contactId = null, templ
     phone: normalizedPhone,
     templateName: metaTemplateName,
     language: template?.language || "tr",
-    components: buildTemplateComponents({ template, variables, mediaUrl }),
+    components: buildTemplateComponents({ template, variables, mediaUrl: resolvedMediaUrl }),
     credentials
   });
 
