@@ -527,6 +527,17 @@ label {
   gap: 14px;
 }
 
+.template-filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.template-empty-state {
+  margin-top: 4px;
+}
+
 .template-list-head {
   display: flex;
   justify-content: space-between;
@@ -558,6 +569,11 @@ label {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+}
+
+.template-item-meta {
+  flex-shrink: 0;
+  color: var(--muted);
 }
 
 .template-item-title {

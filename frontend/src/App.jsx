@@ -801,6 +801,97 @@ function App() { // NOSONAR
     }
   };
 
+  let templateListContent;
+
+  if (templatesLoading) {
+    templateListContent = <p>Yükleniyor...</p>;
+  } else if (filteredTemplates.length > 0) {
+    templateListContent = (
+      <ul className="list template-list">
+        {filteredTemplates.map((item) => (
+          <li key={item._id} className="template-item">
+            <div className="template-item-top">
+              <div className="template-item-title">
+                <strong>{item.name}</strong>
+                <div className="template-item-badges">
+                  <span className="meta-pill">{item.language}</span>
+                  <span className="meta-pill">{item.category || "UTILITY"}</span>
+                  <span className="meta-pill">{String(item.headerType || "none").toUpperCase()}</span>
+                  <span className={`status-badge status-${item.status || "pending"}`}>{item.status || "pending"}</span>
+                  {item.metaStatus ? <span className="meta-pill light">Meta: {item.metaStatus}</span> : null}
+                </div>
+              </div>
+              <div className="template-item-meta">
+                <small>{item.metaCreatedAt ? new Date(item.metaCreatedAt).toLocaleString("tr-TR") : "-"}</small>
+              </div>
+            </div>
+
+            <p className="template-summary">{item.content || "İçerik yok"}</p>
+
+            <div className="template-item-actions">
+              <button type="button" onClick={() => onToggleTemplateDetail(item._id)}>
+                {expandedTemplateId === item._id ? "Detayı Gizle" : "Detay"}
+              </button>
+              <button type="button" className="secondary-action" onClick={() => setTemplateForm({
+                name: item.name || "",
+                category: item.category || "UTILITY",
+                language: item.language || "tr",
+                publishToMeta: true,
+                headerType: item.headerType || "none",
+                headerText: item.headerText || "",
+                headerMediaHandle: item.headerMediaHandle || "",
+                footerText: item.footerText || "",
+                content: item.content || ""
+              })}>
+                Forma Aktar
+              </button>
+              <button type="button" onClick={() => onDeleteTemplate(item._id)}>Sil</button>
+            </div>
+            {expandedTemplateId === item._id && (
+              <div className="template-detail-card">
+                <div className="template-detail-grid">
+                  <div className="template-detail-item">
+                    <span className="template-detail-label">Header Type</span>
+                    <strong>{String(item.headerType || "none").toUpperCase()}</strong>
+                  </div>
+                  {item.headerText && (
+                    <div className="template-detail-item">
+                      <span className="template-detail-label">Header Text</span>
+                      <strong>{item.headerText}</strong>
+                    </div>
+                  )}
+                  {item.headerMediaHandle && (
+                    <div className="template-detail-item">
+                      <span className="template-detail-label">Media Handle</span>
+                      <strong>{item.headerMediaHandle}</strong>
+                    </div>
+                  )}
+                  <div className="template-detail-item template-detail-item-wide">
+                    <span className="template-detail-label">Body</span>
+                    <p>{item.content || "-"}</p>
+                  </div>
+                  {item.footerText && (
+                    <div className="template-detail-item template-detail-item-wide">
+                      <span className="template-detail-label">Footer</span>
+                      <p>{item.footerText}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  } else {
+    templateListContent = (
+      <div className="empty-state template-empty-state">
+        <h4>Template bulunamadı</h4>
+        <p>Filtreleri temizleyip tekrar deneyebilirsin.</p>
+      </div>
+    );
+  }
+
   let backendStatusLabel = "Kontrol ediliyor";
 
   if (health === "ok") {
@@ -1153,82 +1244,14 @@ function App() { // NOSONAR
                 <option value="rejected">rejected</option>
               </select>
             </div>
+            <div className="template-filter-summary">
+              <span className="meta-pill light">Arama: {templateSearch || "-"}</span>
+              <span className="meta-pill light">Dil: {templateLanguageFilter === "all" ? "Tümü" : templateLanguageFilter}</span>
+              <span className="meta-pill light">Header: {templateHeaderTypeFilter === "all" ? "Tümü" : templateHeaderTypeFilter}</span>
+              <span className="meta-pill light">Durum: {templateStatusFilter === "all" ? "Tümü" : templateStatusFilter}</span>
+            </div>
             {templateActionResult && <p className="info">{templateActionResult}</p>}
-            {templatesLoading ? <p>Yükleniyor...</p> : (
-              <ul className="list template-list">
-                {filteredTemplates.map((item) => (
-                  <li key={item._id} className="template-item">
-                    <div className="template-item-top">
-                      <div className="template-item-title">
-                        <strong>{item.name}</strong>
-                        <div className="template-item-badges">
-                          <span className="meta-pill">{item.language}</span>
-                          <span className="meta-pill">{item.category || "UTILITY"}</span>
-                          <span className="meta-pill">{String(item.headerType || "none").toUpperCase()}</span>
-                          <span className={`status-badge status-${item.status || "pending"}`}>{item.status || "pending"}</span>
-                          {item.metaStatus ? <span className="meta-pill light">Meta: {item.metaStatus}</span> : null}
-                        </div>
-                      </div>
-                      <small>{item.metaCreatedAt ? new Date(item.metaCreatedAt).toLocaleString("tr-TR") : "-"}</small>
-                    </div>
-
-                    <p className="template-summary">{item.content || "İçerik yok"}</p>
-
-                    <div className="template-item-actions">
-                      <button type="button" onClick={() => onToggleTemplateDetail(item._id)}>
-                        {expandedTemplateId === item._id ? "Detayı Gizle" : "Detay"}
-                      </button>
-                      <button type="button" className="secondary-action" onClick={() => setTemplateForm({
-                        name: item.name || "",
-                        category: item.category || "UTILITY",
-                        language: item.language || "tr",
-                        publishToMeta: true,
-                        headerType: item.headerType || "none",
-                        headerText: item.headerText || "",
-                        headerMediaHandle: item.headerMediaHandle || "",
-                        footerText: item.footerText || "",
-                        content: item.content || ""
-                      })}>
-                        Forma Aktar
-                      </button>
-                      <button type="button" onClick={() => onDeleteTemplate(item._id)}>Sil</button>
-                    </div>
-                    {expandedTemplateId === item._id && (
-                      <div className="template-detail-card">
-                        <div className="template-detail-grid">
-                          <div className="template-detail-item">
-                            <span className="template-detail-label">Header Type</span>
-                            <strong>{String(item.headerType || "none").toUpperCase()}</strong>
-                          </div>
-                          {item.headerText && (
-                            <div className="template-detail-item">
-                              <span className="template-detail-label">Header Text</span>
-                              <strong>{item.headerText}</strong>
-                            </div>
-                          )}
-                          {item.headerMediaHandle && (
-                            <div className="template-detail-item">
-                              <span className="template-detail-label">Media Handle</span>
-                              <strong>{item.headerMediaHandle}</strong>
-                            </div>
-                          )}
-                          <div className="template-detail-item template-detail-item-wide">
-                            <span className="template-detail-label">Body</span>
-                            <p>{item.content || "-"}</p>
-                          </div>
-                          {item.footerText && (
-                            <div className="template-detail-item template-detail-item-wide">
-                              <span className="template-detail-label">Footer</span>
-                              <p>{item.footerText}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
+            {templateListContent}
           </div>
           </div>
         </section>
