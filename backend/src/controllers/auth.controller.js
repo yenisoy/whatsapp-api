@@ -2,6 +2,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import { getRequestBaseUrl, resolvePublicMediaUrl } from "../utils/user-media-storage.js";
+import { getWebhookBaseUrl } from "../services/system-settings.service.js";
+import { buildUserWebhookUrl, ensureUserWebhookCredentials } from "../services/user-webhook.service.js";
 
 const getJwtSecret = () => process.env.JWT_SECRET || "dev-secret-change-me";
 
@@ -19,7 +21,7 @@ const buildToken = (user) => {
   );
 };
 
-const serializeUser = (user, baseUrl = "") => ({
+const serializeUser = (user, baseUrl = "", webhookBaseUrl = "") => ({
   id: String(user._id),
   username: user.username,
   role: user.role,
@@ -31,7 +33,10 @@ const serializeUser = (user, baseUrl = "") => ({
   mediaMimeType: user.mediaMimeType || "",
   mediaUrl: resolvePublicMediaUrl(user.mediaUrl || "", baseUrl),
   mediaSourceUrl: user.mediaSourceUrl || "",
-  mediaUpdatedAt: user.mediaUpdatedAt || null
+  mediaUpdatedAt: user.mediaUpdatedAt || null,
+  webhookToken: user.webhookToken || "",
+  webhookPath: user.webhookPath || "",
+  webhookUrl: buildUserWebhookUrl({ baseUrl: webhookBaseUrl, webhookPath: user.webhookPath || "" })
 });
 
 export const login = async (req, res, next) => {
@@ -55,10 +60,15 @@ export const login = async (req, res, next) => {
 
     const token = buildToken(user);
     const baseUrl = getRequestBaseUrl(req);
+    const changed = ensureUserWebhookCredentials(user);
+    if (changed) {
+      await user.save();
+    }
+    const webhookBaseUrl = await getWebhookBaseUrl(baseUrl);
 
     return res.json({
       token,
-      user: serializeUser(user, baseUrl)
+      user: serializeUser(user, baseUrl, webhookBaseUrl)
     });
   } catch (error) {
     return next(error);
@@ -73,8 +83,13 @@ export const me = async (req, res, next) => {
     }
 
     const baseUrl = getRequestBaseUrl(req);
+    const changed = ensureUserWebhookCredentials(user);
+    if (changed) {
+      await user.save();
+    }
+    const webhookBaseUrl = await getWebhookBaseUrl(baseUrl);
 
-    return res.json({ user: serializeUser(user, baseUrl) });
+    return res.json({ user: serializeUser(user, baseUrl, webhookBaseUrl) });
   } catch (error) {
     return next(error);
   }

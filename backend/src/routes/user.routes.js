@@ -6,6 +6,7 @@ import {
   deleteMyMedia,
   getMyMedia,
   listUsers,
+  regenerateMyWebhookToken,
   uploadMyMedia,
   updateMyProfile
 } from "../controllers/user.controller.js";
@@ -23,6 +24,7 @@ router.get("/", requireAuth, requireAdmin, listUsers);
 router.post("/", requireAuth, requireAdmin, createUser);
 router.delete("/:id", requireAuth, requireAdmin, deleteUser);
 router.put("/me", requireAuth, updateMyProfile);
+router.post("/me/webhook-token/regenerate", requireAuth, regenerateMyWebhookToken);
 router.get("/me/media", requireAuth, getMyMedia);
 router.post("/me/media", requireAuth, upload.single("file"), uploadMyMedia);
 router.delete("/me/media", requireAuth, deleteMyMedia);

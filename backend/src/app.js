@@ -4,9 +4,11 @@ import express from "express";
 import path from "path";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth.routes.js";
+import conversationRoutes from "./routes/conversation.routes.js";
 import contactRoutes from "./routes/contact.routes.js";
 import logsRoutes from "./routes/logs.routes.js";
 import sendRoutes from "./routes/send.routes.js";
+import settingsRoutes from "./routes/settings.routes.js";
 import templateRoutes from "./routes/template.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import webhookRoutes from "./routes/webhook.routes.js";
@@ -26,9 +28,11 @@ app.use("/webhooks", webhookRoutes);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/contacts", requireAuth, contactRoutes);
+app.use("/conversations", requireAuth, conversationRoutes);
 app.use("/templates", requireAuth, templateRoutes);
 app.use("/send", requireAuth, sendRoutes);
 app.use("/logs", requireAuth, logsRoutes);
+app.use("/settings", settingsRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "WhatsApp API backend is running" });

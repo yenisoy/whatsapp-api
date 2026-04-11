@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import User from "../models/user.model.js";
 import { getRequestBaseUrl, removeUserMediaFiles, resolvePublicMediaUrl, saveUserMediaBuffer } from "../utils/user-media-storage.js";
+import { getWebhookBaseUrl } from "../services/system-settings.service.js";
+import { buildUserWebhookUrl, ensureUserWebhookCredentials, generateWebhookToken } from "../services/user-webhook.service.js";
 
 const fetchRemoteMedia = async (sourceUrl) => {
   const url = String(sourceUrl || "").trim();
@@ -36,7 +38,7 @@ const fetchRemoteMedia = async (sourceUrl) => {
   };
 };
 
-const sanitizeUser = (user, baseUrl = "") => ({
+const sanitizeUser = ({ user, baseUrl = "", webhookBaseUrl = "", includeWebhookToken = false }) => ({
   id: String(user._id),
   username: user.username,
   role: user.role,
@@ -49,6 +51,9 @@ const sanitizeUser = (user, baseUrl = "") => ({
   mediaUrl: resolvePublicMediaUrl(user.mediaUrl || "", baseUrl),
   mediaSourceUrl: user.mediaSourceUrl || "",
   mediaUpdatedAt: user.mediaUpdatedAt || null,
+  webhookPath: user.webhookPath || "",
+  webhookUrl: buildUserWebhookUrl({ baseUrl: webhookBaseUrl, webhookPath: user.webhookPath || "" }),
+  ...(includeWebhookToken ? { webhookToken: user.webhookToken || "" } : {}),
   createdAt: user.createdAt,
   updatedAt: user.updatedAt
 });
@@ -57,7 +62,8 @@ export const listUsers = async (req, res, next) => {
   try {
     const users = await User.find({}).sort({ createdAt: -1 });
     const baseUrl = getRequestBaseUrl(req);
-    return res.json(users.map((user) => sanitizeUser(user, baseUrl)));
+    const webhookBaseUrl = await getWebhookBaseUrl(baseUrl);
+    return res.json(users.map((user) => sanitizeUser({ user, baseUrl, webhookBaseUrl })));
   } catch (error) {
     return next(error);
   }
@@ -86,10 +92,16 @@ export const createUser = async (req, res, next) => {
     const created = await User.create({
       username,
       passwordHash,
-      role
+      role,
+      webhookToken: generateWebhookToken()
     });
 
-    return res.status(201).json(sanitizeUser(created, getRequestBaseUrl(req)));
+    ensureUserWebhookCredentials(created);
+    await created.save();
+
+    const baseUrl = getRequestBaseUrl(req);
+    const webhookBaseUrl = await getWebhookBaseUrl(baseUrl);
+    return res.status(201).json(sanitizeUser({ user: created, baseUrl, webhookBaseUrl }));
   } catch (error) {
     return next(error);
   }
@@ -129,6 +141,7 @@ export const updateMyProfile = async (req, res, next) => {
     user.whatsappToken = whatsappToken;
     user.whatsappPhoneId = whatsappPhoneId;
     user.whatsappBusinessAccountId = whatsappBusinessAccountId;
+    ensureUserWebhookCredentials(user);
 
     if (password) {
       user.passwordHash = await bcrypt.hash(password, 10);
@@ -136,10 +149,34 @@ export const updateMyProfile = async (req, res, next) => {
 
     await user.save();
     const baseUrl = getRequestBaseUrl(req);
+    const webhookBaseUrl = await getWebhookBaseUrl(baseUrl);
 
     return res.json({
       message: "profile updated",
-      user: sanitizeUser(user, baseUrl)
+      user: sanitizeUser({ user, baseUrl, webhookBaseUrl, includeWebhookToken: true })
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const regenerateMyWebhookToken = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "user not found" });
+    }
+
+    user.webhookToken = generateWebhookToken();
+    ensureUserWebhookCredentials(user);
+    await user.save();
+
+    const baseUrl = getRequestBaseUrl(req);
+    const webhookBaseUrl = await getWebhookBaseUrl(baseUrl);
+
+    return res.json({
+      message: "webhook token regenerated",
+      user: sanitizeUser({ user, baseUrl, webhookBaseUrl, includeWebhookToken: true })
     });
   } catch (error) {
     return next(error);
@@ -154,6 +191,7 @@ export const getMyMedia = async (req, res, next) => {
     }
 
     const baseUrl = getRequestBaseUrl(req);
+    const webhookBaseUrl = await getWebhookBaseUrl(baseUrl);
 
     return res.json({
       mediaFileName: user.mediaFileName || "",
@@ -161,7 +199,10 @@ export const getMyMedia = async (req, res, next) => {
       mediaMimeType: user.mediaMimeType || "",
       mediaUrl: resolvePublicMediaUrl(user.mediaUrl || "", baseUrl),
       mediaSourceUrl: user.mediaSourceUrl || "",
-      mediaUpdatedAt: user.mediaUpdatedAt || null
+      mediaUpdatedAt: user.mediaUpdatedAt || null,
+      webhookPath: user.webhookPath || "",
+      webhookToken: user.webhookToken || "",
+      webhookUrl: buildUserWebhookUrl({ baseUrl: webhookBaseUrl, webhookPath: user.webhookPath || "" })
     });
   } catch (error) {
     return next(error);
@@ -200,6 +241,7 @@ export const uploadMyMedia = async (req, res, next) => {
     }
 
     const baseUrl = getRequestBaseUrl(req);
+    ensureUserWebhookCredentials(user);
 
     const previousFileName = user.mediaFileName || "";
     const media = await saveUserMediaBuffer({
@@ -241,7 +283,12 @@ export const uploadMyMedia = async (req, res, next) => {
 
     return res.json({
       message: "media updated",
-      user: sanitizeUser(user, baseUrl)
+      user: sanitizeUser({
+        user,
+        baseUrl,
+        webhookBaseUrl: await getWebhookBaseUrl(baseUrl),
+        includeWebhookToken: true
+      })
     });
   } catch (error) {
     return next(error);
@@ -266,10 +313,16 @@ export const deleteMyMedia = async (req, res, next) => {
     await user.save();
 
     const baseUrl = getRequestBaseUrl(req);
+    ensureUserWebhookCredentials(user);
 
     return res.json({
       message: "media deleted",
-      user: sanitizeUser(user, baseUrl)
+      user: sanitizeUser({
+        user,
+        baseUrl,
+        webhookBaseUrl: await getWebhookBaseUrl(baseUrl),
+        includeWebhookToken: true
+      })
     });
   } catch (error) {
     return next(error);

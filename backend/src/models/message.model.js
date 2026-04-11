@@ -13,6 +13,12 @@ const messageSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Conversation",
+      default: null,
+      index: true
+    },
     contactId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Contact",
@@ -21,7 +27,21 @@ const messageSchema = new mongoose.Schema(
     templateId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Template",
-      required: true
+      default: null
+    },
+    direction: {
+      type: String,
+      enum: ["inbound", "outbound"],
+      default: "outbound",
+      index: true
+    },
+    messageType: {
+      type: String,
+      default: "template"
+    },
+    body: {
+      type: String,
+      default: ""
     },
     variables: {
       type: mongoose.Schema.Types.Mixed,
@@ -65,6 +85,7 @@ const messageSchema = new mongoose.Schema(
 
 messageSchema.index({ phone: 1 });
 messageSchema.index({ providerMessageId: 1 });
+messageSchema.index({ ownerId: 1, conversationId: 1, createdAt: -1 });
 messageSchema.index({ createdAt: -1 });
 
 const Message = mongoose.model("Message", messageSchema);

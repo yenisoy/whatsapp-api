@@ -280,6 +280,47 @@ export const api = {
     return parseResponse(response);
   },
 
+  async getConversations(query = "") {
+    const suffix = query ? `?q=${encodeURIComponent(query)}` : "";
+    const response = await fetch(`${API_BASE_URL}/conversations${suffix}`, {
+      headers: buildHeaders()
+    });
+    return parseResponse(response);
+  },
+
+  async getConversationMessages(conversationId, options = {}) {
+    const params = new URLSearchParams();
+    if (options?.limit) {
+      params.set("limit", String(options.limit));
+    }
+    if (options?.before) {
+      params.set("before", String(options.before));
+    }
+
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}/messages${query}`, {
+      headers: buildHeaders()
+    });
+    return parseResponse(response);
+  },
+
+  async sendConversationMessage(conversationId, payload) {
+    const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}/messages`, {
+      method: "POST",
+      headers: buildHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload)
+    });
+    return parseResponse(response);
+  },
+
+  async markConversationRead(conversationId) {
+    const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}/read`, {
+      method: "POST",
+      headers: buildHeaders()
+    });
+    return parseResponse(response);
+  },
+
   async getLogs() {
     const response = await fetch(`${API_BASE_URL}/logs`, {
       headers: buildHeaders()
@@ -327,6 +368,30 @@ export const api = {
 
   async updateMyProfile(payload) {
     const response = await fetch(`${API_BASE_URL}/users/me`, {
+      method: "PUT",
+      headers: buildHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload)
+    });
+    return parseResponse(response);
+  },
+
+  async regenerateMyWebhookToken() {
+    const response = await fetch(`${API_BASE_URL}/users/me/webhook-token/regenerate`, {
+      method: "POST",
+      headers: buildHeaders()
+    });
+    return parseResponse(response);
+  },
+
+  async getSystemSettings() {
+    const response = await fetch(`${API_BASE_URL}/settings`, {
+      headers: buildHeaders()
+    });
+    return parseResponse(response);
+  },
+
+  async updateSystemSettings(payload) {
+    const response = await fetch(`${API_BASE_URL}/settings`, {
       method: "PUT",
       headers: buildHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(payload)

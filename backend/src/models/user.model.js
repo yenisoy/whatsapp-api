@@ -31,6 +31,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: ""
     },
+    webhookToken: {
+      type: String,
+      default: ""
+    },
+    webhookPath: {
+      type: String,
+      default: "",
+      index: true
+    },
     mediaFileName: {
       type: String,
       default: ""

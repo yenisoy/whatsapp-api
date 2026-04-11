@@ -2,8 +2,8 @@ import Message from "../models/message.model.js";
 import { sendWhatsAppTemplate } from "./whatsapp.service.js";
 import { extractTemplateVariables } from "../utils/template-variables.js";
 import { resolvePublicMediaUrl } from "../utils/user-media-storage.js";
-
-const normalizePhone = (phone) => String(phone || "").replaceAll(/\D/g, "").trim();
+import { renderTemplate } from "../utils/render-template.js";
+import { normalizePhone, resolveContactName, upsertConversationByPhone } from "./conversation.service.js";
 
 const toLocalLogStatus = ({ success, mode, providerStatus = "" }) => {
   if (!success) {
@@ -20,12 +20,16 @@ const toLocalLogStatus = ({ success, mode, providerStatus = "" }) => {
   return "sent";
 };
 
-const buildMessageLog = async ({ ownerId, phone, contactId = null, templateId, variables, status, error = "", providerMessageId = "", mediaUrl = "", providerRequestUrl = "", providerRequestBody = null }) => {
+const buildMessageLog = async ({ ownerId, phone, contactId = null, conversationId = null, templateId = null, variables, status, error = "", providerMessageId = "", mediaUrl = "", providerRequestUrl = "", providerRequestBody = null, direction = "outbound", messageType = "template", body = "" }) => {
   return Message.create({
     ownerId,
     phone,
     contactId,
+    conversationId,
     templateId,
+    direction,
+    messageType,
+    body,
     variables,
     status,
     error,
@@ -81,6 +85,7 @@ const buildTemplateComponents = ({ template, variables = {}, mediaUrl = "" }) =>
 
 export const sendWithTemplate = async ({ ownerId, phone, contactId = null, template, variables = {}, mediaUrl = "", publicBaseUrl = "", credentials = {} }) => {
   const normalizedPhone = normalizePhone(phone);
+  const renderedBody = renderTemplate(template?.content || "", variables);
 
   if (!normalizedPhone) {
     throw new Error("phone is required");
@@ -106,11 +111,26 @@ export const sendWithTemplate = async ({ ownerId, phone, contactId = null, templ
   const metaTemplateName = String(template?.metaTemplateName || template?.name || "").trim();
 
   if (!metaTemplateName) {
+    const contactName = await resolveContactName({ ownerId, phone: normalizedPhone });
+    const conversation = await upsertConversationByPhone({
+      ownerId,
+      phone: normalizedPhone,
+      contactName,
+      direction: "outbound",
+      messageType: "template",
+      messageText: renderedBody,
+      incrementUnread: false
+    });
+
     const log = await buildMessageLog({
       ownerId,
       phone: normalizedPhone,
       contactId,
       templateId: template._id,
+      conversationId: conversation?._id || null,
+      direction: "outbound",
+      messageType: "template",
+      body: renderedBody,
       variables,
       status: "failed",
       error: "template name is missing or invalid",
@@ -135,11 +155,26 @@ export const sendWithTemplate = async ({ ownerId, phone, contactId = null, templ
 
   if (!templateResult.success) {
     const error = templateResult.error || "template send failed";
+    const contactName = await resolveContactName({ ownerId, phone: normalizedPhone });
+    const conversation = await upsertConversationByPhone({
+      ownerId,
+      phone: normalizedPhone,
+      contactName,
+      direction: "outbound",
+      messageType: "template",
+      messageText: renderedBody,
+      incrementUnread: false
+    });
+
     const log = await buildMessageLog({
       ownerId,
       phone: normalizedPhone,
       contactId,
       templateId: template._id,
+      conversationId: conversation?._id || null,
+      direction: "outbound",
+      messageType: "template",
+      body: renderedBody,
       variables,
       status: "failed",
       error,
@@ -156,11 +191,26 @@ export const sendWithTemplate = async ({ ownerId, phone, contactId = null, templ
     };
   }
 
+  const contactName = await resolveContactName({ ownerId, phone: normalizedPhone });
+  const conversation = await upsertConversationByPhone({
+    ownerId,
+    phone: normalizedPhone,
+    contactName,
+    direction: "outbound",
+    messageType: "template",
+    messageText: renderedBody,
+    incrementUnread: false
+  });
+
   const log = await buildMessageLog({
     ownerId,
     phone: normalizedPhone,
     contactId,
     templateId: template._id,
+    conversationId: conversation?._id || null,
+    direction: "outbound",
+    messageType: "template",
+    body: renderedBody,
     variables,
     status: toLocalLogStatus({
       success: true,

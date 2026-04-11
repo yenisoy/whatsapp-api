@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api, setApiToken } from "./api";
+import ChatPanel from "./ChatPanel";
 
 const defaultContact = { name: "", phone: "", tag: "" };
 const defaultTemplateForm = {
@@ -154,9 +155,12 @@ function App() { // NOSONAR
   const [profileMediaSourceUrl, setProfileMediaSourceUrl] = useState("");
   const [profileMediaResult, setProfileMediaResult] = useState("");
   const [profileMediaUploading, setProfileMediaUploading] = useState(false);
+  const [systemWebhookBaseUrl, setSystemWebhookBaseUrl] = useState("");
+  const [systemWebhookEffectiveUrl, setSystemWebhookEffectiveUrl] = useState("");
+  const [systemWebhookResult, setSystemWebhookResult] = useState("");
 
   const tabs = useMemo(() => {
-    const base = ["dashboard", "contacts", "templates", "send", "logs", "profile"];
+    const base = ["dashboard", "contacts", "templates", "send", "chat", "logs", "profile"];
 
     if (currentUser?.role === "admin") {
       return [...base, "users"];
@@ -379,6 +383,20 @@ function App() { // NOSONAR
     }
   };
 
+  const loadSystemSettings = async () => {
+    if (currentUser?.role !== "admin") {
+      return;
+    }
+
+    try {
+      const settings = await api.getSystemSettings();
+      setSystemWebhookBaseUrl(settings.webhookBaseUrl || "");
+      setSystemWebhookEffectiveUrl(settings.effectiveWebhookBaseUrl || "");
+    } catch (error) {
+      setSystemWebhookResult(formatError(error));
+    }
+  };
+
   const loadInitialData = async () => {
     await Promise.all([
       loadContacts(),
@@ -421,6 +439,10 @@ function App() { // NOSONAR
     if (activeTab === "users" && currentUser?.role === "admin") {
       loadUsers();
     }
+
+    if (activeTab === "profile" && currentUser?.role === "admin") {
+      loadSystemSettings();
+    }
   }, [activeTab, currentUser]);
 
   const onLogin = async (event) => {
@@ -448,6 +470,9 @@ function App() { // NOSONAR
     setGroupSendForm(defaultGroupSendForm);
     setSelectedTags([]);
     setUsers([]);
+    setSystemWebhookBaseUrl("");
+    setSystemWebhookEffectiveUrl("");
+    setSystemWebhookResult("");
     setActiveTab("dashboard");
   };
 
@@ -851,6 +876,33 @@ function App() { // NOSONAR
       setProfileResult("Profil güncellendi");
     } catch (error) {
       setProfileResult(formatError(error));
+    }
+  };
+
+  const onRegenerateWebhookToken = async () => {
+    try {
+      const response = await api.regenerateMyWebhookToken();
+      const user = response?.user;
+      if (user) {
+        setCurrentUser(user);
+      }
+      setProfileResult("Webhook token yenilendi");
+    } catch (error) {
+      setProfileResult(formatError(error));
+    }
+  };
+
+  const onUpdateSystemWebhookSettings = async (event) => {
+    event.preventDefault();
+
+    try {
+      const response = await api.updateSystemSettings({ webhookBaseUrl: systemWebhookBaseUrl });
+      setSystemWebhookBaseUrl(response.webhookBaseUrl || "");
+      setSystemWebhookEffectiveUrl(response.effectiveWebhookBaseUrl || "");
+      setSystemWebhookResult("Sistem webhook URL ayarı güncellendi");
+      await loadCurrentUser();
+    } catch (error) {
+      setSystemWebhookResult(formatError(error));
     }
   };
 
@@ -1717,6 +1769,10 @@ function App() { // NOSONAR
         </section>
       )}
 
+      {activeTab === "chat" && (
+        <ChatPanel />
+      )}
+
       {activeTab === "logs" && (
         <section className="panel">
           <h2>Logs</h2>
@@ -1768,7 +1824,32 @@ function App() { // NOSONAR
                 />
                 <button type="submit">Kaydet</button>
               </form>
+
+              <div className="profile-media-preview" style={{ marginTop: "12px" }}>
+                <span className="template-preview-label">Kullanıcı Bazlı Webhook</span>
+                <small><strong>Webhook URL:</strong> {currentUser?.webhookUrl || "-"}</small>
+                <small><strong>Webhook Path:</strong> {currentUser?.webhookPath || "-"}</small>
+                <small><strong>Webhook Token:</strong> {currentUser?.webhookToken || "-"}</small>
+                <div className="row profile-media-actions">
+                  <button type="button" className="secondary-action" onClick={onRegenerateWebhookToken}>Token Yenile</button>
+                </div>
+              </div>
+
+              {currentUser?.role === "admin" && (
+                <form onSubmit={onUpdateSystemWebhookSettings} className="form compact-form" style={{ marginTop: "12px" }}>
+                  <span className="template-preview-label">Sistem Webhook Base URL (Admin)</span>
+                  <input
+                    placeholder="https://api.senin-domainin.com"
+                    value={systemWebhookBaseUrl}
+                    onChange={(event) => setSystemWebhookBaseUrl(event.target.value)}
+                  />
+                  <small>Efektif URL: {systemWebhookEffectiveUrl || "-"}</small>
+                  <button type="submit" className="secondary-action">Sistem URL Kaydet</button>
+                </form>
+              )}
+
               {profileResult && <p className="info">{profileResult}</p>}
+              {systemWebhookResult && <p className="info">{systemWebhookResult}</p>}
             </div>
 
             <div className="profile-card">
