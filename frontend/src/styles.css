@@ -883,6 +883,34 @@ label {
   gap: 8px;
 }
 
+.send-media-field {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #dbe3ff;
+  background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
+}
+
+.send-media-actions,
+.send-media-upload-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.send-media-upload-box {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.send-media-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .send-mini-preview,
 .send-template-preview,
 .send-tag-filter-box {

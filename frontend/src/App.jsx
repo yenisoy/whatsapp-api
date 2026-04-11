@@ -94,6 +94,10 @@ function App() { // NOSONAR
 
   const [singleSendForm, setSingleSendForm] = useState(defaultSingleSendForm);
   const [groupSendForm, setGroupSendForm] = useState(defaultGroupSendForm);
+  const [sendMediaFile, setSendMediaFile] = useState(null);
+  const [sendMediaSourceUrl, setSendMediaSourceUrl] = useState("");
+  const [sendMediaResult, setSendMediaResult] = useState("");
+  const [sendMediaUploading, setSendMediaUploading] = useState(false);
   const [selectedTags, setSelectedTags] = useState([]);
   const [sendResult, setSendResult] = useState("");
 
@@ -854,6 +858,43 @@ function App() { // NOSONAR
     }
   };
 
+  const onUploadSendMedia = async (target) => {
+    const hasFile = Boolean(sendMediaFile);
+    const hasSourceUrl = Boolean(sendMediaSourceUrl.trim());
+
+    if (!hasFile && !hasSourceUrl) {
+      setSendMediaResult("Önce dosya seçin veya medya linki girin");
+      return;
+    }
+
+    try {
+      setSendMediaUploading(true);
+      setSendMediaResult("");
+
+      const response = await api.uploadMyMedia({
+        file: sendMediaFile,
+        sourceUrl: sendMediaSourceUrl.trim()
+      });
+
+      setCurrentUser(response.user);
+
+      const mediaUrl = response.user?.mediaUrl || "";
+      if (target === "single") {
+        setSingleSendForm((current) => ({ ...current, mediaUrl }));
+      } else if (target === "group") {
+        setGroupSendForm((current) => ({ ...current, mediaUrl }));
+      }
+
+      setSendMediaFile(null);
+      setSendMediaSourceUrl("");
+      setSendMediaResult(mediaUrl ? `Medya yüklendi: ${mediaUrl}` : "Medya yüklendi");
+    } catch (error) {
+      setSendMediaResult(formatError(error));
+    } finally {
+      setSendMediaUploading(false);
+    }
+  };
+
   const onDeleteMyMedia = async () => {
     try {
       await api.deleteMyMedia();
@@ -1437,12 +1478,33 @@ function App() { // NOSONAR
                         </button>
                       )}
                     </div>
+
+                    <div className="send-media-upload-box">
+                      <span className="template-preview-label">Medya yükle</span>
+                      <input
+                        type="file"
+                        onChange={(event) => setSendMediaFile(event.target.files?.[0] || null)}
+                      />
+                      <input
+                        type="url"
+                        placeholder="Medya linki"
+                        value={sendMediaSourceUrl}
+                        onChange={(event) => setSendMediaSourceUrl(event.target.value)}
+                      />
+                      <div className="row send-media-upload-actions">
+                        <button type="button" className="secondary-action" onClick={() => onUploadSendMedia("single")} disabled={sendMediaUploading}>
+                          {sendMediaUploading ? "Yükleniyor..." : "Yükle ve kullan"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {singleSendTemplateInfo?.needsMedia && currentUser?.mediaUrl && (
                   <p className="send-media-hint">Kayıtlı medya: {currentUser.mediaUrl}</p>
                 )}
+
+                {singleSendTemplateInfo?.needsMedia && sendMediaResult && <p className="info">{sendMediaResult}</p>}
 
                 <textarea value={singleSendForm.variablesJson} onChange={(event) => setSingleSendForm({ ...singleSendForm, variablesJson: event.target.value })} />
                 <button type="submit">Gönder</button>
@@ -1517,12 +1579,35 @@ function App() { // NOSONAR
                         </button>
                       )}
                     </div>
+
+                    <div className="send-media-upload-box">
+                      <span className="template-preview-label">Medya yükle</span>
+                      <input
+                        type="file"
+                        onChange={(event) => setSendMediaFile(event.target.files?.[0] || null)}
+                        disabled={isSending}
+                      />
+                      <input
+                        type="url"
+                        placeholder="Medya linki"
+                        value={sendMediaSourceUrl}
+                        onChange={(event) => setSendMediaSourceUrl(event.target.value)}
+                        disabled={isSending}
+                      />
+                      <div className="row send-media-upload-actions">
+                        <button type="button" className="secondary-action" onClick={() => onUploadSendMedia("group")} disabled={sendMediaUploading || isSending}>
+                          {sendMediaUploading ? "Yükleniyor..." : "Yükle ve kullan"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {groupSendTemplateInfo?.needsMedia && currentUser?.mediaUrl && (
                   <p className="send-media-hint">Kayıtlı medya: {currentUser.mediaUrl}</p>
                 )}
+
+                {groupSendTemplateInfo?.needsMedia && sendMediaResult && <p className="info">{sendMediaResult}</p>}
 
                 <textarea
                   value={groupSendForm.variablesJson}
