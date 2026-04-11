@@ -24,7 +24,13 @@ const serializeUser = (user) => ({
   role: user.role,
   whatsappToken: user.whatsappToken || "",
   whatsappPhoneId: user.whatsappPhoneId || "",
-  whatsappBusinessAccountId: user.whatsappBusinessAccountId || ""
+  whatsappBusinessAccountId: user.whatsappBusinessAccountId || "",
+  mediaFileName: user.mediaFileName || "",
+  mediaOriginalName: user.mediaOriginalName || "",
+  mediaMimeType: user.mediaMimeType || "",
+  mediaUrl: user.mediaUrl || "",
+  mediaSourceUrl: user.mediaSourceUrl || "",
+  mediaUpdatedAt: user.mediaUpdatedAt || null
 });
 
 export const login = async (req, res, next) => {

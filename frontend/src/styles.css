@@ -187,6 +187,78 @@ label {
   gap: 12px;
 }
 
+.profile-panel {
+  gap: 18px;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.profile-media-summary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.profile-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.profile-media-box {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.profile-media-preview,
+.profile-media-upload {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.profile-media-preview strong {
+  font-size: 15px;
+}
+
+.profile-media-preview a {
+  word-break: break-all;
+  color: var(--primary);
+}
+
+.profile-media-preview small {
+  color: var(--muted);
+}
+
+.profile-media-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-media-actions button {
+  flex: 1 1 0;
+}
+
 .import-box {
   padding: 16px;
   margin-top: 18px;

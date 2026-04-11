@@ -30,6 +30,30 @@ const userSchema = new mongoose.Schema(
     whatsappBusinessAccountId: {
       type: String,
       default: ""
+    },
+    mediaFileName: {
+      type: String,
+      default: ""
+    },
+    mediaOriginalName: {
+      type: String,
+      default: ""
+    },
+    mediaMimeType: {
+      type: String,
+      default: ""
+    },
+    mediaUrl: {
+      type: String,
+      default: ""
+    },
+    mediaSourceUrl: {
+      type: String,
+      default: ""
+    },
+    mediaUpdatedAt: {
+      type: Date,
+      default: null
     }
   },
   {

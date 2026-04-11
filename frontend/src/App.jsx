@@ -121,6 +121,10 @@ function App() { // NOSONAR
     password: ""
   });
   const [profileResult, setProfileResult] = useState("");
+  const [profileMediaFile, setProfileMediaFile] = useState(null);
+  const [profileMediaSourceUrl, setProfileMediaSourceUrl] = useState("");
+  const [profileMediaResult, setProfileMediaResult] = useState("");
+  const [profileMediaUploading, setProfileMediaUploading] = useState(false);
 
   const tabs = useMemo(() => {
     const base = ["dashboard", "contacts", "templates", "send", "logs", "profile"];
@@ -821,6 +825,75 @@ function App() { // NOSONAR
     }
   };
 
+  const onUploadMyMedia = async () => {
+    const hasFile = Boolean(profileMediaFile);
+    const hasSourceUrl = Boolean(profileMediaSourceUrl.trim());
+
+    if (!hasFile && !hasSourceUrl) {
+      setProfileMediaResult("Önce dosya seçin veya medya linki girin");
+      return;
+    }
+
+    try {
+      setProfileMediaUploading(true);
+      setProfileMediaResult("");
+
+      const response = await api.uploadMyMedia({
+        file: profileMediaFile,
+        sourceUrl: profileMediaSourceUrl.trim()
+      });
+
+      setCurrentUser(response.user);
+      setProfileMediaFile(null);
+      setProfileMediaSourceUrl("");
+      setProfileMediaResult(`Medya kaydedildi: ${response.user?.mediaUrl || "-"}`);
+    } catch (error) {
+      setProfileMediaResult(formatError(error));
+    } finally {
+      setProfileMediaUploading(false);
+    }
+  };
+
+  const onDeleteMyMedia = async () => {
+    try {
+      await api.deleteMyMedia();
+      if (currentUser) {
+        setCurrentUser({
+          ...currentUser,
+          mediaFileName: "",
+          mediaOriginalName: "",
+          mediaMimeType: "",
+          mediaUrl: "",
+          mediaSourceUrl: "",
+          mediaUpdatedAt: null
+        });
+      }
+      setProfileMediaResult("Medya silindi");
+    } catch (error) {
+      setProfileMediaResult(formatError(error));
+    }
+  };
+
+  const useMyMediaForSingle = () => {
+    if (!currentUser?.mediaUrl) {
+      setSendResult("Önce profil medya alanına dosya veya link yükleyin");
+      return;
+    }
+
+    setSingleSendForm((current) => ({ ...current, mediaUrl: currentUser.mediaUrl }));
+    setSendResult("Profil medyası tekli gönderime eklendi");
+  };
+
+  const useMyMediaForGroup = () => {
+    if (!currentUser?.mediaUrl) {
+      setSendResult("Önce profil medya alanına dosya veya link yükleyin");
+      return;
+    }
+
+    setGroupSendForm((current) => ({ ...current, mediaUrl: currentUser.mediaUrl }));
+    setSendResult("Profil medyası grup gönderime eklendi");
+  };
+
   let templateListContent;
 
   if (templatesLoading) {
@@ -1350,12 +1423,25 @@ function App() { // NOSONAR
                 )}
 
                 {singleSendTemplateInfo?.needsMedia && (
-                  <input
-                    placeholder="Media URL (header image/video/document için zorunlu)"
-                    value={singleSendForm.mediaUrl}
-                    onChange={(event) => setSingleSendForm({ ...singleSendForm, mediaUrl: event.target.value })}
-                    required
-                  />
+                  <div className="send-media-field">
+                    <input
+                      placeholder="Media URL (header image/video/document için zorunlu)"
+                      value={singleSendForm.mediaUrl}
+                      onChange={(event) => setSingleSendForm({ ...singleSendForm, mediaUrl: event.target.value })}
+                      required
+                    />
+                    <div className="send-media-actions">
+                      {currentUser?.mediaUrl && (
+                        <button type="button" className="secondary-action" onClick={useMyMediaForSingle}>
+                          Kendi medyamı kullan
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {singleSendTemplateInfo?.needsMedia && currentUser?.mediaUrl && (
+                  <p className="send-media-hint">Kayıtlı medya: {currentUser.mediaUrl}</p>
                 )}
 
                 <textarea value={singleSendForm.variablesJson} onChange={(event) => setSingleSendForm({ ...singleSendForm, variablesJson: event.target.value })} />
@@ -1416,13 +1502,26 @@ function App() { // NOSONAR
                 )}
 
                 {groupSendTemplateInfo?.needsMedia && (
-                  <input
-                    placeholder="Media URL (header image/video/document için zorunlu)"
-                    value={groupSendForm.mediaUrl}
-                    onChange={(event) => setGroupSendForm({ ...groupSendForm, mediaUrl: event.target.value })}
-                    disabled={isSending}
-                    required
-                  />
+                  <div className="send-media-field">
+                    <input
+                      placeholder="Media URL (header image/video/document için zorunlu)"
+                      value={groupSendForm.mediaUrl}
+                      onChange={(event) => setGroupSendForm({ ...groupSendForm, mediaUrl: event.target.value })}
+                      disabled={isSending}
+                      required
+                    />
+                    <div className="send-media-actions">
+                      {currentUser?.mediaUrl && (
+                        <button type="button" className="secondary-action" onClick={useMyMediaForGroup} disabled={isSending}>
+                          Kendi medyamı kullan
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {groupSendTemplateInfo?.needsMedia && currentUser?.mediaUrl && (
+                  <p className="send-media-hint">Kayıtlı medya: {currentUser.mediaUrl}</p>
                 )}
 
                 <textarea
@@ -1511,33 +1610,95 @@ function App() { // NOSONAR
       )}
 
       {activeTab === "profile" && (
-        <section className="panel">
-          <h2>Profil ve WhatsApp Ayarları</h2>
-          <form onSubmit={onUpdateProfile} className="form">
-            <input
-              placeholder="WHATSAPP_TOKEN"
-              value={profileForm.whatsappToken}
-              onChange={(event) => setProfileForm({ ...profileForm, whatsappToken: event.target.value })}
-            />
-            <input
-              placeholder="WHATSAPP_PHONE_ID"
-              value={profileForm.whatsappPhoneId}
-              onChange={(event) => setProfileForm({ ...profileForm, whatsappPhoneId: event.target.value })}
-            />
-            <input
-              placeholder="WHATSAPP_BUSINESS_ACCOUNT_ID"
-              value={profileForm.whatsappBusinessAccountId}
-              onChange={(event) => setProfileForm({ ...profileForm, whatsappBusinessAccountId: event.target.value })}
-            />
-            <input
-              type="password"
-              placeholder="Yeni şifre (opsiyonel)"
-              value={profileForm.password}
-              onChange={(event) => setProfileForm({ ...profileForm, password: event.target.value })}
-            />
-            <button type="submit">Kaydet</button>
-          </form>
-          {profileResult && <p className="info">{profileResult}</p>}
+        <section className="panel profile-panel">
+          <div className="profile-header">
+            <div>
+              <h2>Profil ve WhatsApp Ayarları</h2>
+              <p className="section-caption">Kendi medya alanını yönet, link veya dosya yükle ve mesajlarda tekrar kullan.</p>
+            </div>
+            <div className="profile-media-summary">
+              <div className="stat-pill"><strong>{currentUser?.mediaUrl ? 1 : 0}</strong><span>Medya</span></div>
+              <div className="stat-pill"><strong>{currentUser?.mediaSourceUrl ? 1 : 0}</strong><span>Linkten</span></div>
+            </div>
+          </div>
+
+          <div className="two-col profile-workspace">
+            <div className="profile-card">
+              <div className="card-title-block">
+                <h3>WhatsApp Ayarları</h3>
+                <p>Token ve bağlantı bilgilerini güncelle.</p>
+              </div>
+              <form onSubmit={onUpdateProfile} className="form compact-form">
+                <input
+                  placeholder="WHATSAPP_TOKEN"
+                  value={profileForm.whatsappToken}
+                  onChange={(event) => setProfileForm({ ...profileForm, whatsappToken: event.target.value })}
+                />
+                <input
+                  placeholder="WHATSAPP_PHONE_ID"
+                  value={profileForm.whatsappPhoneId}
+                  onChange={(event) => setProfileForm({ ...profileForm, whatsappPhoneId: event.target.value })}
+                />
+                <input
+                  placeholder="WHATSAPP_BUSINESS_ACCOUNT_ID"
+                  value={profileForm.whatsappBusinessAccountId}
+                  onChange={(event) => setProfileForm({ ...profileForm, whatsappBusinessAccountId: event.target.value })}
+                />
+                <input
+                  type="password"
+                  placeholder="Yeni şifre (opsiyonel)"
+                  value={profileForm.password}
+                  onChange={(event) => setProfileForm({ ...profileForm, password: event.target.value })}
+                />
+                <button type="submit">Kaydet</button>
+              </form>
+              {profileResult && <p className="info">{profileResult}</p>}
+            </div>
+
+            <div className="profile-card">
+              <div className="card-title-block">
+                <h3>Özel Medya Alanım</h3>
+                <p>Bir dosya veya link yükle. Yeni medya gelince eski otomatik silinir.</p>
+              </div>
+
+              <div className="profile-media-box">
+                <div className="profile-media-preview">
+                  <span className="template-preview-label">Kayıtlı medya</span>
+                  {currentUser?.mediaUrl ? (
+                    <>
+                      <strong>{currentUser.mediaOriginalName || currentUser.mediaFileName || "Media"}</strong>
+                      <a href={currentUser.mediaUrl} target="_blank" rel="noreferrer">{currentUser.mediaUrl}</a>
+                      {currentUser.mediaSourceUrl && <small>Kaynak: {currentUser.mediaSourceUrl}</small>}
+                    </>
+                  ) : (
+                    <p className="hint">Henüz medya yok.</p>
+                  )}
+                </div>
+
+                <div className="profile-media-upload">
+                  <input
+                    type="file"
+                    onChange={(event) => setProfileMediaFile(event.target.files?.[0] || null)}
+                  />
+                  <input
+                    type="url"
+                    placeholder="Medya linki (isteğe bağlı)"
+                    value={profileMediaSourceUrl}
+                    onChange={(event) => setProfileMediaSourceUrl(event.target.value)}
+                  />
+                  <div className="row profile-media-actions">
+                    <button type="button" onClick={onUploadMyMedia} disabled={profileMediaUploading}>
+                      {profileMediaUploading ? "Yükleniyor..." : "Medya Kaydet"}
+                    </button>
+                    <button type="button" className="secondary-action" onClick={onDeleteMyMedia} disabled={!currentUser?.mediaUrl}>
+                      Medyayı Sil
+                    </button>
+                  </div>
+                  {profileMediaResult && <p className="info">{profileMediaResult}</p>}
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
       )}
 

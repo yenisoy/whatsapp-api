@@ -332,5 +332,47 @@ export const api = {
       body: JSON.stringify(payload)
     });
     return parseResponse(response);
+  },
+
+  async getMyMedia() {
+    const response = await fetch(`${API_BASE_URL}/users/me/media`, {
+      headers: buildHeaders()
+    });
+    return parseResponse(response);
+  },
+
+  async uploadMyMedia({ file = null, sourceUrl = "" } = {}) {
+    const formData = new FormData();
+
+    if (file) {
+      formData.append("file", file);
+    }
+
+    if (sourceUrl) {
+      formData.append("sourceUrl", sourceUrl);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/users/me/media`, {
+      method: "POST",
+      headers: buildHeaders(),
+      body: formData
+    });
+
+    return parseResponse(response);
+  },
+
+  async deleteMyMedia() {
+    const response = await fetch(`${API_BASE_URL}/users/me/media`, {
+      method: "DELETE",
+      headers: buildHeaders()
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      const data = text ? JSON.parse(text) : null;
+      throw new Error(data?.message || `Request failed with ${response.status}`);
+    }
+
+    return true;
   }
 };
