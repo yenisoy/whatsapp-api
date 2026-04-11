@@ -85,6 +85,7 @@ function App() { // NOSONAR
   const [expandedTemplateId, setExpandedTemplateId] = useState("");
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateLanguageFilter, setTemplateLanguageFilter] = useState("all");
+  const [templateHeaderTypeFilter, setTemplateHeaderTypeFilter] = useState("all");
   const [templateStatusFilter, setTemplateStatusFilter] = useState("all");
   const [templateForm, setTemplateForm] = useState(defaultTemplateForm);
   const [templateMediaFile, setTemplateMediaFile] = useState(null);
@@ -219,9 +220,11 @@ function App() { // NOSONAR
 
     return templates.filter((template) => {
       const matchesLanguage = templateLanguageFilter === "all" || String(template.language || "").toLowerCase() === templateLanguageFilter;
+      const normalizedHeaderType = String(template.headerType || "none").toLowerCase();
+      const matchesHeaderType = templateHeaderTypeFilter === "all" || normalizedHeaderType === templateHeaderTypeFilter;
       const matchesStatus = templateStatusFilter === "all" || String(template.status || "pending").toLowerCase() === templateStatusFilter;
 
-      if (!matchesLanguage || !matchesStatus) {
+      if (!matchesLanguage || !matchesHeaderType || !matchesStatus) {
         return false;
       }
 
@@ -235,7 +238,7 @@ function App() { // NOSONAR
 
       return haystack.includes(query);
     });
-  }, [templateLanguageFilter, templateSearch, templateStatusFilter, templates]);
+  }, [templateHeaderTypeFilter, templateLanguageFilter, templateSearch, templateStatusFilter, templates]);
 
   const isMediaHeaderTemplate = (template) => ["image", "video", "document"].includes(String(template?.headerType || "").toLowerCase());
 
@@ -1135,6 +1138,14 @@ function App() { // NOSONAR
                 <option value="en">en</option>
                 <option value="en_us">en_US</option>
               </select>
+              <select value={templateHeaderTypeFilter} onChange={(event) => setTemplateHeaderTypeFilter(event.target.value)}>
+                <option value="all">Tüm headerlar</option>
+                <option value="none">Header yok</option>
+                <option value="text">Text</option>
+                <option value="image">Image</option>
+                <option value="video">Video</option>
+                <option value="document">Document</option>
+              </select>
               <select value={templateStatusFilter} onChange={(event) => setTemplateStatusFilter(event.target.value)}>
                 <option value="all">Tüm durumlar</option>
                 <option value="approved">approved</option>
@@ -1153,6 +1164,7 @@ function App() { // NOSONAR
                         <div className="template-item-badges">
                           <span className="meta-pill">{item.language}</span>
                           <span className="meta-pill">{item.category || "UTILITY"}</span>
+                          <span className="meta-pill">{String(item.headerType || "none").toUpperCase()}</span>
                           <span className={`status-badge status-${item.status || "pending"}`}>{item.status || "pending"}</span>
                           {item.metaStatus ? <span className="meta-pill light">Meta: {item.metaStatus}</span> : null}
                         </div>
@@ -1183,13 +1195,34 @@ function App() { // NOSONAR
                     </div>
                     {expandedTemplateId === item._id && (
                       <div className="template-detail-card">
-                        <pre className="info">{[
-                          `Header Type: ${item.headerType || "none"}`,
-                          item.headerText ? `Header Text: ${item.headerText}` : "",
-                          item.headerMediaHandle ? `Media Handle: ${item.headerMediaHandle}` : "",
-                          item.footerText ? `Footer: ${item.footerText}` : "",
-                          `Body: ${item.content || ""}`
-                        ].filter(Boolean).join("\n")}</pre>
+                        <div className="template-detail-grid">
+                          <div className="template-detail-item">
+                            <span className="template-detail-label">Header Type</span>
+                            <strong>{String(item.headerType || "none").toUpperCase()}</strong>
+                          </div>
+                          {item.headerText && (
+                            <div className="template-detail-item">
+                              <span className="template-detail-label">Header Text</span>
+                              <strong>{item.headerText}</strong>
+                            </div>
+                          )}
+                          {item.headerMediaHandle && (
+                            <div className="template-detail-item">
+                              <span className="template-detail-label">Media Handle</span>
+                              <strong>{item.headerMediaHandle}</strong>
+                            </div>
+                          )}
+                          <div className="template-detail-item template-detail-item-wide">
+                            <span className="template-detail-label">Body</span>
+                            <p>{item.content || "-"}</p>
+                          </div>
+                          {item.footerText && (
+                            <div className="template-detail-item template-detail-item-wide">
+                              <span className="template-detail-label">Footer</span>
+                              <p>{item.footerText}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </li>
