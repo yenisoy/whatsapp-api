@@ -808,27 +808,45 @@ function App() { // NOSONAR
   } else if (filteredTemplates.length > 0) {
     templateListContent = (
       <ul className="list template-list">
-        {filteredTemplates.map((item) => (
+        {filteredTemplates.map((item) => {
+          const headerPreview = item.headerType === "text" && item.headerText ? (
+            <p className="template-preview-text strong">{item.headerText}</p>
+          ) : null;
+
+          const mediaHeaderPreview = isMediaHeaderTemplate(item) ? (
+            <div className="template-media-preview">
+              <span className="meta-pill">{String(item.headerType || "none").toUpperCase()}</span>
+              <p className="template-preview-text">Media handle: {item.headerMediaHandle || "-"}</p>
+            </div>
+          ) : null;
+
+          const fallbackHeaderPreview = !headerPreview && !mediaHeaderPreview ? (
+            <p className="template-preview-text muted">Header yok</p>
+          ) : null;
+
+          return (
           <li key={item._id} className="template-item">
-            <div className="template-item-top">
-              <div className="template-item-title">
-                <strong>{item.name}</strong>
-                <div className="template-item-badges">
+            <div className="template-card-top">
+              <div className="template-card-title-block">
+                <div className="template-card-title-row">
+                  <strong>{item.name}</strong>
+                  <span className={`status-badge status-${item.status || "pending"}`}>{item.status || "pending"}</span>
+                </div>
+                <div className="template-chip-row">
                   <span className="meta-pill">{item.language}</span>
                   <span className="meta-pill">{item.category || "UTILITY"}</span>
                   <span className="meta-pill">{String(item.headerType || "none").toUpperCase()}</span>
-                  <span className={`status-badge status-${item.status || "pending"}`}>{item.status || "pending"}</span>
                   {item.metaStatus ? <span className="meta-pill light">Meta: {item.metaStatus}</span> : null}
                 </div>
               </div>
-              <div className="template-item-meta">
-                <small>{item.metaCreatedAt ? new Date(item.metaCreatedAt).toLocaleString("tr-TR") : "-"}</small>
-              </div>
+              <small className="template-item-meta">{item.metaCreatedAt ? new Date(item.metaCreatedAt).toLocaleString("tr-TR") : "-"}</small>
             </div>
 
-            <p className="template-summary">{item.content || "İçerik yok"}</p>
+            <div className="template-body-snippet">
+              <p>{item.content || "İçerik yok"}</p>
+            </div>
 
-            <div className="template-item-actions">
+            <div className="template-item-actions template-card-actions">
               <button type="button" onClick={() => onToggleTemplateDetail(item._id)}>
                 {expandedTemplateId === item._id ? "Detayı Gizle" : "Detay"}
               </button>
@@ -849,38 +867,31 @@ function App() { // NOSONAR
             </div>
             {expandedTemplateId === item._id && (
               <div className="template-detail-card">
-                <div className="template-detail-grid">
-                  <div className="template-detail-item">
-                    <span className="template-detail-label">Header Type</span>
-                    <strong>{String(item.headerType || "none").toUpperCase()}</strong>
+                <div className="template-preview-sections">
+                  <div className="template-preview-section template-preview-header">
+                    <span className="template-preview-label">Header</span>
+                    {headerPreview}
+                    {mediaHeaderPreview}
+                    {fallbackHeaderPreview}
                   </div>
-                  {item.headerText && (
-                    <div className="template-detail-item">
-                      <span className="template-detail-label">Header Text</span>
-                      <strong>{item.headerText}</strong>
-                    </div>
-                  )}
-                  {item.headerMediaHandle && (
-                    <div className="template-detail-item">
-                      <span className="template-detail-label">Media Handle</span>
-                      <strong>{item.headerMediaHandle}</strong>
-                    </div>
-                  )}
-                  <div className="template-detail-item template-detail-item-wide">
-                    <span className="template-detail-label">Body</span>
-                    <p>{item.content || "-"}</p>
+
+                  <div className="template-preview-section template-preview-body">
+                    <span className="template-preview-label">Mesaj</span>
+                    <p className="template-preview-message">{item.content || "-"}</p>
                   </div>
+
                   {item.footerText && (
-                    <div className="template-detail-item template-detail-item-wide">
-                      <span className="template-detail-label">Footer</span>
-                      <p>{item.footerText}</p>
+                    <div className="template-preview-section template-preview-footer">
+                      <span className="template-preview-label">Footer</span>
+                      <p className="template-preview-text muted">{item.footerText}</p>
                     </div>
                   )}
                 </div>
               </div>
             )}
           </li>
-        ))}
+        );
+        })}
       </ul>
     );
   } else {
