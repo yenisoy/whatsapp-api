@@ -335,6 +335,13 @@ export const api = {
     return parseResponse(response);
   },
 
+  async getUnmatchedWebhookLogs() {
+    const response = await fetch(`${API_BASE_URL}/logs/unmatched`, {
+      headers: buildHeaders()
+    });
+    return parseResponse(response);
+  },
+
   async getUsers() {
     const response = await fetch(`${API_BASE_URL}/users`, {
       headers: buildHeaders()

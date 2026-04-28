@@ -152,6 +152,9 @@ function App() { // NOSONAR
   const [logEntries, setLogEntries] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState("");
+  const [unmatchedWebhookLogs, setUnmatchedWebhookLogs] = useState([]);
+  const [unmatchedLogsLoading, setUnmatchedLogsLoading] = useState(false);
+  const [unmatchedLogsError, setUnmatchedLogsError] = useState("");
   const [messageStats, setMessageStats] = useState({
     totalMessages: 0,
     successRate: 0
@@ -183,7 +186,7 @@ function App() { // NOSONAR
     const base = ["dashboard", "contacts", "templates", "send", "chat", "logs", "profile"];
 
     if (currentUser?.role === "admin") {
-      return [...base, "users"];
+      return [...base, "unmatched-logs", "users"];
     }
 
     return base;
@@ -328,6 +331,12 @@ function App() { // NOSONAR
       onLoadLogs();
     }
   }, [activeTab, logEntries.length, logsLoading]);
+
+  useEffect(() => {
+    if (activeTab === "unmatched-logs" && currentUser?.role === "admin" && unmatchedWebhookLogs.length === 0 && !unmatchedLogsLoading) {
+      onLoadUnmatchedWebhookLogs();
+    }
+  }, [activeTab, currentUser?.role, unmatchedWebhookLogs.length, unmatchedLogsLoading]);
 
   const loadHealth = async () => {
     try {
@@ -650,6 +659,23 @@ function App() { // NOSONAR
     );
   });
 
+  const unmatchedLogRows = unmatchedWebhookLogs.map((log, idx) => {
+    const rowKey = log._id || `${log.webhookPath || "unmatched"}-${log.createdAt || idx}`;
+    const phoneIds = Array.isArray(log.phoneNumberIds) && log.phoneNumberIds.length > 0
+      ? log.phoneNumberIds.join(", ")
+      : "-";
+
+    return (
+      <tr key={rowKey}>
+        <td>{formatLogDate(log.createdAt)}</td>
+        <td>{log.reason || "owner_not_found"}</td>
+        <td>{log.webhookPath || "-"}</td>
+        <td>{phoneIds}</td>
+        <td>{log.sourceUrl || "-"}</td>
+      </tr>
+    );
+  });
+
   const onImportContacts = async (event) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -906,6 +932,19 @@ function App() { // NOSONAR
       setLogsError(formatError(error));
     } finally {
       setLogsLoading(false);
+    }
+  };
+
+  const onLoadUnmatchedWebhookLogs = async () => {
+    try {
+      setUnmatchedLogsLoading(true);
+      setUnmatchedLogsError("");
+      const response = await api.getUnmatchedWebhookLogs();
+      setUnmatchedWebhookLogs(Array.isArray(response) ? response : []);
+    } catch (error) {
+      setUnmatchedLogsError(formatError(error));
+    } finally {
+      setUnmatchedLogsLoading(false);
     }
   };
 
@@ -1881,6 +1920,44 @@ function App() { // NOSONAR
             <div className="empty-state">
               <h4>Henüz log yok</h4>
               <p>Webhook veya mesaj akışı çalışınca kayıtlar burada tablo halinde görünecek.</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab === "unmatched-logs" && currentUser?.role === "admin" && (
+        <section className="panel logs-panel">
+          <div className="logs-header">
+            <div>
+              <h2>Eşleşmeyen Webhook Logları</h2>
+              <p className="section-caption">Kullanıcıya bağlanamayan webhook istekleri sadece admin için.</p>
+            </div>
+            <button type="button" onClick={onLoadUnmatchedWebhookLogs} disabled={unmatchedLogsLoading}>
+              {unmatchedLogsLoading ? "Yükleniyor..." : "Logları Getir"}
+            </button>
+          </div>
+
+          {unmatchedLogsError && <p className="info">{unmatchedLogsError}</p>}
+
+          {unmatchedWebhookLogs.length > 0 ? (
+            <div className="logs-table-wrap">
+              <table className="logs-table">
+                <thead>
+                  <tr>
+                    <th>Tarih</th>
+                    <th>Neden</th>
+                    <th>Webhook Path</th>
+                    <th>Phone Number ID</th>
+                    <th>Kaynak URL</th>
+                  </tr>
+                </thead>
+                <tbody>{unmatchedLogRows}</tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="empty-state">
+              <h4>Eşleşmeyen webhook yok</h4>
+              <p>Kullanıcı bulunamayan webhook olursa bu listede görünecek.</p>
             </div>
           )}
         </section>

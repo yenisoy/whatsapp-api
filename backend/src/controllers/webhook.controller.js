@@ -1,4 +1,5 @@
 import Message from "../models/message.model.js";
+import UnmatchedWebhookLog from "../models/unmatched-webhook-log.model.js";
 import User from "../models/user.model.js";
 import { normalizePhone, upsertConversationByPhone } from "../services/conversation.service.js";
 import { buildWebhookEventSummary, createWebhookEventLog } from "../services/webhook-event-log.service.js";
@@ -276,6 +277,14 @@ export const receiveWhatsAppWebhook = async (req, res, next) => {
     const webhookUser = await resolveWebhookUser({ webhookPath, entries });
 
     if (!webhookUser?._id) {
+      await UnmatchedWebhookLog.create({
+        webhookPath,
+        phoneNumberIds: extractWebhookPhoneNumberIds(entries),
+        reason: "owner_not_found",
+        sourceUrl: String(req.originalUrl || req.url || ""),
+        requestMethod: String(req.method || "POST").trim().toUpperCase(),
+        requestBody: req.body
+      });
       return res.sendStatus(403);
     }
 

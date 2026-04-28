@@ -1,4 +1,5 @@
 import Message from "../models/message.model.js";
+import UnmatchedWebhookLog from "../models/unmatched-webhook-log.model.js";
 import WebhookEventLog from "../models/webhook-event-log.model.js";
 
 const describeMessageLog = (message = {}) => {
@@ -133,6 +134,22 @@ export const getLogStats = async (req, res, next) => {
       webhookEvents,
       successRate
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const getUnmatchedWebhookLogs = async (req, res, next) => {
+  try {
+    const { limit = 200 } = req.query;
+    const parsedLimit = Math.min(Math.max(Number(limit) || 200, 1), 1000);
+
+    const logs = await UnmatchedWebhookLog.find({})
+      .sort({ createdAt: -1 })
+      .limit(parsedLimit)
+      .lean();
+
+    return res.json(logs);
   } catch (error) {
     return next(error);
   }
