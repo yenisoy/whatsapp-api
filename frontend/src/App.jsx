@@ -1801,74 +1801,91 @@ function App() { // NOSONAR
           </div>
 
           <div className="two-col profile-workspace">
-            <div className="profile-card">
-              <div className="card-title-block">
-                <h3>WhatsApp Ayarları</h3>
-                <p>Token ve bağlantı bilgilerini güncelle.</p>
-              </div>
-              <form onSubmit={onUpdateProfile} className="form compact-form">
-                <input
-                  placeholder="WHATSAPP_TOKEN"
-                  value={profileForm.whatsappToken}
-                  onChange={(event) => setProfileForm({ ...profileForm, whatsappToken: event.target.value })}
-                />
-                <input
-                  placeholder="WHATSAPP_PHONE_ID"
-                  value={profileForm.whatsappPhoneId}
-                  onChange={(event) => setProfileForm({ ...profileForm, whatsappPhoneId: event.target.value })}
-                />
-                <input
-                  placeholder="WHATSAPP_BUSINESS_ACCOUNT_ID"
-                  value={profileForm.whatsappBusinessAccountId}
-                  onChange={(event) => setProfileForm({ ...profileForm, whatsappBusinessAccountId: event.target.value })}
-                />
-                <input
-                  placeholder="Relay Webhook URL"
-                  value={profileForm.relayWebhookUrl}
-                  onChange={(event) => setProfileForm({ ...profileForm, relayWebhookUrl: event.target.value })}
-                />
-                <input
-                  placeholder="Relay Verify Token"
-                  value={profileForm.relayWebhookVerifyToken}
-                  onChange={(event) => setProfileForm({ ...profileForm, relayWebhookVerifyToken: event.target.value })}
-                />
-                <input
-                  type="password"
-                  placeholder="Yeni şifre (opsiyonel)"
-                  value={profileForm.password}
-                  onChange={(event) => setProfileForm({ ...profileForm, password: event.target.value })}
-                />
-                <button type="submit">Kaydet</button>
-              </form>
+            <div className="profile-settings-stack">
+              <div className="profile-card profile-card-primary">
+                <div className="card-title-block">
+                  <h3>WhatsApp Bağlantısı</h3>
+                  <p>Meta token ve phone ID bilgilerini buradan güncelle.</p>
+                </div>
+                <form onSubmit={onUpdateProfile} className="form compact-form">
+                  <input
+                    placeholder="WHATSAPP_TOKEN"
+                    value={profileForm.whatsappToken}
+                    onChange={(event) => setProfileForm({ ...profileForm, whatsappToken: event.target.value })}
+                  />
+                  <input
+                    placeholder="WHATSAPP_PHONE_ID"
+                    value={profileForm.whatsappPhoneId}
+                    onChange={(event) => setProfileForm({ ...profileForm, whatsappPhoneId: event.target.value })}
+                  />
+                  <input
+                    placeholder="WHATSAPP_BUSINESS_ACCOUNT_ID"
+                    value={profileForm.whatsappBusinessAccountId}
+                    onChange={(event) => setProfileForm({ ...profileForm, whatsappBusinessAccountId: event.target.value })}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Yeni şifre (opsiyonel)"
+                    value={profileForm.password}
+                    onChange={(event) => setProfileForm({ ...profileForm, password: event.target.value })}
+                  />
+                  <button type="submit">Kaydet</button>
+                </form>
 
-              <div className="profile-media-preview" style={{ marginTop: "12px" }}>
-                <span className="template-preview-label">Kullanıcı Bazlı Webhook</span>
-                <small><strong>Webhook URL:</strong> {currentUser?.webhookUrl || "-"}</small>
-                <small><strong>Webhook Path:</strong> {currentUser?.webhookPath || "-"}</small>
-                <small><strong>Webhook Token:</strong> {currentUser?.webhookToken || "-"}</small>
-                <div className="row profile-media-actions">
-                  <button type="button" className="secondary-action" onClick={onRegenerateWebhookToken}>Token Yenile</button>
+                <div className="profile-media-preview" style={{ marginTop: "12px" }}>
+                  <span className="template-preview-label">Kullanıcı Bazlı Webhook</span>
+                  <small><strong>Webhook URL:</strong> {currentUser?.webhookUrl || "-"}</small>
+                  <small><strong>Webhook Path:</strong> {currentUser?.webhookPath || "-"}</small>
+                  <small><strong>Webhook Token:</strong> {currentUser?.webhookToken || "-"}</small>
+                  <div className="row profile-media-actions">
+                    <button type="button" className="secondary-action" onClick={onRegenerateWebhookToken}>Token Yenile</button>
+                  </div>
                 </div>
               </div>
 
-              <div className="profile-media-preview" style={{ marginTop: "12px" }}>
-                <span className="template-preview-label">İkinci Webhook Relay</span>
-                <small><strong>Relay URL:</strong> {currentUser?.relayWebhookUrl || "-"}</small>
-                <small><strong>Relay Verify Token:</strong> {currentUser?.relayWebhookVerifyToken || "-"}</small>
-                <small>Meta webhook bize gelir, bu payload relay URL'ye gönderilir.</small>
+              <div className="profile-card profile-card-relay">
+                <div className="card-title-block">
+                  <h3>İkinci Webhook Relay</h3>
+                  <p>Meta’dan gelen payload’ı başka sisteme aynen yönlendir.</p>
+                </div>
+                <form onSubmit={onUpdateProfile} className="form compact-form">
+                  <input
+                    placeholder="Relay Webhook URL"
+                    value={profileForm.relayWebhookUrl}
+                    onChange={(event) => setProfileForm({ ...profileForm, relayWebhookUrl: event.target.value })}
+                  />
+                  <input
+                    placeholder="Relay Verify Token"
+                    value={profileForm.relayWebhookVerifyToken}
+                    onChange={(event) => setProfileForm({ ...profileForm, relayWebhookVerifyToken: event.target.value })}
+                  />
+                  <small>Buraya Chatwoot veya başka bir sistemin URL ve token bilgisini girebilirsin.</small>
+                  <button type="submit" className="secondary-action">Relay Ayarlarını Kaydet</button>
+                </form>
+
+                <div className="profile-media-preview" style={{ marginTop: "12px" }}>
+                  <small><strong>Relay URL:</strong> {currentUser?.relayWebhookUrl || "-"}</small>
+                  <small><strong>Relay Verify Token:</strong> {currentUser?.relayWebhookVerifyToken || "-"}</small>
+                  <small>Relay açıksa gelen webhook dış sisteme iletilir, yerel mesaj işleme devre dışı kalır.</small>
+                </div>
               </div>
 
               {currentUser?.role === "admin" && (
-                <form onSubmit={onUpdateSystemWebhookSettings} className="form compact-form" style={{ marginTop: "12px" }}>
-                  <span className="template-preview-label">Sistem Webhook Base URL (Admin)</span>
-                  <input
-                    placeholder="https://api.senin-domainin.com"
-                    value={systemWebhookBaseUrl}
-                    onChange={(event) => setSystemWebhookBaseUrl(event.target.value)}
-                  />
-                  <small>Efektif URL: {systemWebhookEffectiveUrl || "-"}</small>
-                  <button type="submit" className="secondary-action">Sistem URL Kaydet</button>
-                </form>
+                <div className="profile-card profile-card-admin">
+                  <div className="card-title-block">
+                    <h3>Sistem Webhook Base URL</h3>
+                    <p>Varsayılan webhook taban adresini yönet.</p>
+                  </div>
+                  <form onSubmit={onUpdateSystemWebhookSettings} className="form compact-form">
+                    <input
+                      placeholder="https://api.senin-domainin.com"
+                      value={systemWebhookBaseUrl}
+                      onChange={(event) => setSystemWebhookBaseUrl(event.target.value)}
+                    />
+                    <small>Efektif URL: {systemWebhookEffectiveUrl || "-"}</small>
+                    <button type="submit" className="secondary-action">Sistem URL Kaydet</button>
+                  </form>
+                </div>
               )}
 
               {profileResult && <p className="info">{profileResult}</p>}
