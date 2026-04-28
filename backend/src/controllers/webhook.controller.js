@@ -13,6 +13,37 @@ const findWebhookUser = async (webhookPath = "") => {
   return User.findOne({ webhookPath: normalizedPath }).select("_id webhookToken whatsappPhoneId relayWebhookUrl relayWebhookVerifyToken").lean();
 };
 
+const extractWebhookPhoneNumberIds = (entries = []) => {
+  const changes = entries.flatMap((entry) => (Array.isArray(entry?.changes) ? entry.changes : []));
+
+  return changes
+    .map((change) => String(change?.value?.metadata?.phone_number_id || "").trim())
+    .filter(Boolean);
+};
+
+const findWebhookUserByPhoneId = async (phoneNumberIds = []) => {
+  const normalizedIds = Array.from(new Set((Array.isArray(phoneNumberIds) ? phoneNumberIds : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)));
+
+  if (!normalizedIds.length) {
+    return null;
+  }
+
+  return User.findOne({ whatsappPhoneId: { $in: normalizedIds } })
+    .select("_id webhookToken whatsappPhoneId relayWebhookUrl relayWebhookVerifyToken")
+    .lean();
+};
+
+const resolveWebhookUser = async ({ webhookPath = "", entries = [] } = {}) => {
+  if (String(webhookPath || "").trim()) {
+    return findWebhookUser(webhookPath);
+  }
+
+  const phoneNumberIds = extractWebhookPhoneNumberIds(entries);
+  return findWebhookUserByPhoneId(phoneNumberIds);
+};
+
 const extractInboundText = (item = {}) => {
   const type = String(item?.type || "").toLowerCase();
 
@@ -242,14 +273,14 @@ export const receiveWhatsAppWebhook = async (req, res, next) => {
     const entries = Array.isArray(req.body?.entry) ? req.body.entry : [];
     const { statuses, incomingMessages } = extractWebhookPayload(entries);
     const webhookPath = String(req.params?.webhookPath || "").trim();
-    const webhookUser = webhookPath ? await findWebhookUser(webhookPath) : null;
+    const webhookUser = await resolveWebhookUser({ webhookPath, entries });
 
-    if (webhookPath && !webhookUser?._id) {
+    if (!webhookUser?._id) {
       return res.sendStatus(403);
     }
 
     await createWebhookEventLog({
-      ownerId: webhookUser?._id || null,
+      ownerId: webhookUser._id,
       category: "incoming",
       level: "info",
       title: "Meta webhook alındı",
