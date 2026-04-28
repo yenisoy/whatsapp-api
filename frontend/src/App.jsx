@@ -30,6 +30,22 @@ const compareTemplatesByMetaOrder = (first, second) => {
   return secondLocal - firstLocal;
 };
 
+const formatLogDate = (value) => {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    dateStyle: "medium",
+    timeStyle: "medium"
+  }).format(date);
+};
+
 const getApiBaseUrl = () => String(import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
 
 const toPublicMediaUrl = (mediaUrl = "") => {
@@ -133,7 +149,9 @@ function App() { // NOSONAR
   const [sendLogs, setSendLogs] = useState([]);
   const cancelRef = useRef(false);
 
-  const [logsResult, setLogsResult] = useState("");
+  const [logEntries, setLogEntries] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState("");
   const [messageStats, setMessageStats] = useState({
     totalMessages: 0,
     successRate: 0
@@ -305,6 +323,12 @@ function App() { // NOSONAR
     setContactPage(1);
   }, [contactQuery, contactTagFilters, contactPageSize]);
 
+  useEffect(() => {
+    if (activeTab === "logs" && logEntries.length === 0 && !logsLoading) {
+      onLoadLogs();
+    }
+  }, [activeTab, logEntries.length, logsLoading]);
+
   const loadHealth = async () => {
     try {
       await api.health();
@@ -353,7 +377,7 @@ function App() { // NOSONAR
       const sorted = [...list].sort(compareTemplatesByMetaOrder);
       setTemplates(sorted);
     } catch (error) {
-      setLogsResult(formatError(error));
+      setTemplateActionResult(formatError(error));
     } finally {
       setTemplatesLoading(false);
     }
@@ -583,6 +607,46 @@ function App() { // NOSONAR
         <span>{log.name || log.phone} • {log.phone}</span>
         <span className="send-log-msg">{log.message}</span>
       </div>
+    );
+  });
+
+  const logTableRows = logEntries.map((log, idx) => {
+    const logKey = log._id || `${log.kind || "log"}-${log.createdAt || idx}`;
+    const levelLabel = String(log.level || log.status || "info").toLowerCase();
+    const kindLabel = log.kind === "webhook" ? "Webhook" : "Mesaj";
+    let sourceLabel = String(log.source || "").trim();
+    if (!sourceLabel) {
+      if (log.kind === "message") {
+        sourceLabel = log.category === "inbound" ? "WhatsApp" : "Sistem";
+      } else {
+        sourceLabel = "-";
+      }
+    }
+    const targetLabel = String(log.target || log.status || "-").trim();
+
+    return (
+      <tr key={logKey} className={`log-row level-${levelLabel}`}>
+        <td>
+          <div className="log-time-cell">
+            <strong>{formatLogDate(log.createdAt)}</strong>
+            <span>{kindLabel}</span>
+          </div>
+        </td>
+        <td>
+          <div className="log-title-cell">
+            <strong>{log.title || "Log"}</strong>
+            <span className="log-category">{String(log.category || log.status || "-")}</span>
+          </div>
+        </td>
+        <td>
+          <p className="log-content-cell">{log.content || "-"}</p>
+        </td>
+        <td>{sourceLabel}</td>
+        <td>{targetLabel}</td>
+        <td>
+          <span className={`log-pill level-${levelLabel}`}>{levelLabel}</span>
+        </td>
+      </tr>
     );
   });
 
@@ -833,11 +897,15 @@ function App() { // NOSONAR
 
   const onLoadLogs = async () => {
     try {
+      setLogsLoading(true);
+      setLogsError("");
       const response = await api.getLogs();
-      setLogsResult(JSON.stringify(response, null, 2));
+      setLogEntries(Array.isArray(response) ? response : []);
       await loadMessageStats();
     } catch (error) {
-      setLogsResult(formatError(error));
+      setLogsError(formatError(error));
+    } finally {
+      setLogsLoading(false);
     }
   };
 
@@ -1780,10 +1848,41 @@ function App() { // NOSONAR
       )}
 
       {activeTab === "logs" && (
-        <section className="panel">
-          <h2>Logs</h2>
-          <button type="button" onClick={onLoadLogs}>Logları Getir</button>
-          {logsResult && <pre className="info">{logsResult}</pre>}
+        <section className="panel logs-panel">
+          <div className="logs-header">
+            <div>
+              <h2>Logs</h2>
+              <p className="section-caption">Gelen WhatsApp webhookları, relay istekleri ve mesaj kayıtları tek tabloda.</p>
+            </div>
+            <button type="button" onClick={onLoadLogs} disabled={logsLoading}>
+              {logsLoading ? "Yükleniyor..." : "Logları Getir"}
+            </button>
+          </div>
+
+          {logsError && <p className="info">{logsError}</p>}
+
+          {logEntries.length > 0 ? (
+            <div className="logs-table-wrap">
+              <table className="logs-table">
+                <thead>
+                  <tr>
+                    <th>Tarih</th>
+                    <th>Başlık</th>
+                    <th>İçerik</th>
+                    <th>Kaynak</th>
+                    <th>Hedef / Durum</th>
+                    <th>Seviye</th>
+                  </tr>
+                </thead>
+                <tbody>{logTableRows}</tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="empty-state">
+              <h4>Henüz log yok</h4>
+              <p>Webhook veya mesaj akışı çalışınca kayıtlar burada tablo halinde görünecek.</p>
+            </div>
+          )}
         </section>
       )}
 

@@ -1,6 +1,7 @@
 import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
 import { normalizePhone, upsertConversationByPhone } from "../services/conversation.service.js";
+import { buildWebhookEventSummary, createWebhookEventLog } from "../services/webhook-event-log.service.js";
 import { relayWhatsAppWebhook } from "../services/webhook-relay.service.js";
 
 const findWebhookUser = async (webhookPath = "") => {
@@ -202,8 +203,30 @@ export const verifyWhatsAppWebhook = async (req, res) => {
   if (webhookPath) {
     const user = await findWebhookUser(webhookPath);
     if (user && token && token === String(user.webhookToken || "")) {
+      await createWebhookEventLog({
+        ownerId: user._id,
+        category: "verification",
+        level: "success",
+        title: "Webhook doğrulaması başarılı",
+        content: `Path: ${webhookPath}`,
+        requestMethod: "GET",
+        sourceUrl: String(req.originalUrl || req.url || "")
+      });
       return res.status(200).send(challenge);
     }
+
+    if (user?._id) {
+      await createWebhookEventLog({
+        ownerId: user._id,
+        category: "verification",
+        level: "warning",
+        title: "Webhook doğrulaması başarısız",
+        content: `Path: ${webhookPath}`,
+        requestMethod: "GET",
+        sourceUrl: String(req.originalUrl || req.url || "")
+      });
+    }
+
     return res.sendStatus(403);
   }
 
@@ -225,15 +248,51 @@ export const receiveWhatsAppWebhook = async (req, res, next) => {
       return res.sendStatus(403);
     }
 
+    await createWebhookEventLog({
+      ownerId: webhookUser?._id || null,
+      category: "incoming",
+      level: "info",
+      title: "Meta webhook alındı",
+      content: buildWebhookEventSummary({ entries, statuses, incomingMessages }),
+      requestMethod: "POST",
+      sourceUrl: String(req.originalUrl || req.url || ""),
+      requestBody: req.body
+    });
+
     if (webhookUser?.relayWebhookUrl) {
       try {
-        await relayWhatsAppWebhook({
+        const relayResult = await relayWhatsAppWebhook({
           targetUrl: webhookUser.relayWebhookUrl,
           verifyToken: webhookUser.relayWebhookVerifyToken || "",
           payload: req.body,
           sourceHeaders: req.headers
         });
+
+        await createWebhookEventLog({
+          ownerId: webhookUser._id,
+          category: "relay",
+          level: "success",
+          title: "Webhook dış sisteme iletildi",
+          content: `Relay URL: ${webhookUser.relayWebhookUrl}`,
+          requestMethod: "POST",
+          sourceUrl: String(req.originalUrl || req.url || ""),
+          targetUrl: webhookUser.relayWebhookUrl,
+          requestBody: req.body,
+          responseStatus: relayResult?.status || 200,
+          responseBody: relayResult?.responseText || ""
+        });
       } catch {
+        await createWebhookEventLog({
+          ownerId: webhookUser._id,
+          category: "relay",
+          level: "error",
+          title: "Webhook relay başarısız",
+          content: `Relay URL: ${webhookUser.relayWebhookUrl}`,
+          requestMethod: "POST",
+          sourceUrl: String(req.originalUrl || req.url || ""),
+          targetUrl: webhookUser.relayWebhookUrl,
+          requestBody: req.body
+        });
         return res.status(502).json({
           message: "relay webhook delivery failed"
         });
@@ -244,6 +303,19 @@ export const receiveWhatsAppWebhook = async (req, res, next) => {
 
     await updateMessageStatuses(statuses, webhookUser?._id || null);
     await processIncomingMessages(incomingMessages, webhookUser);
+
+    if (webhookUser?._id) {
+      await createWebhookEventLog({
+        ownerId: webhookUser._id,
+        category: "processing",
+        level: "success",
+        title: "Webhook yerel olarak işlendi",
+        content: `Status: ${statuses.length}, Message bundle: ${incomingMessages.length}`,
+        requestMethod: "POST",
+        sourceUrl: String(req.originalUrl || req.url || ""),
+        requestBody: req.body
+      });
+    }
 
     return res.sendStatus(200);
   } catch (error) {

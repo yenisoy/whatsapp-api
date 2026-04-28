@@ -1,4 +1,59 @@
 import Message from "../models/message.model.js";
+import WebhookEventLog from "../models/webhook-event-log.model.js";
+
+const describeMessageLog = (message = {}) => {
+  const direction = String(message.direction || "outbound").toLowerCase();
+  const status = String(message.status || "").toLowerCase();
+  const phone = String(message.phone || "").trim();
+  const body = String(message.body || "").trim();
+  const error = String(message.error || "").trim();
+
+  let title = "Giden mesaj";
+  if (direction === "inbound") {
+    title = "Gelen mesaj";
+  } else if (status === "failed") {
+    title = "Mesaj gönderimi başarısız";
+  }
+
+  let level = "success";
+  if (status === "failed") {
+    level = "error";
+  } else if (direction === "inbound") {
+    level = "info";
+  }
+
+  const content = body || error || String(message.providerMessageId || "").trim() || "-";
+
+  return {
+    _id: String(message._id),
+    kind: "message",
+    category: direction,
+    level,
+    title,
+    content,
+    source: direction === "inbound" ? "WhatsApp" : "Sistem",
+    target: phone,
+    status: status || "queued",
+    createdAt: message.createdAt,
+    updatedAt: message.updatedAt,
+    raw: message
+  };
+};
+
+const describeWebhookLog = (event = {}) => ({
+  _id: String(event._id),
+  kind: "webhook",
+  category: String(event.category || "incoming"),
+  level: String(event.level || "info"),
+  title: event.title || "Webhook olayı",
+  content: event.content || "-",
+  source: event.sourceUrl || "-",
+  target: event.targetUrl || "-",
+  status: event.responseStatus ? String(event.responseStatus) : "-",
+  createdAt: event.createdAt,
+  updatedAt: event.updatedAt,
+  raw: event
+});
 
 export const getLogs = async (req, res, next) => {
   try {
@@ -7,12 +62,23 @@ export const getLogs = async (req, res, next) => {
       ownerId: req.user.id
     };
 
+    const eventFilter = {
+      ownerId: req.user.id
+    };
+
     if (status) {
       filter.status = status;
+      eventFilter.level = status;
     }
 
     if (phone) {
       filter.phone = { $regex: String(phone), $options: "i" };
+      eventFilter.$or = [
+        { title: { $regex: String(phone), $options: "i" } },
+        { content: { $regex: String(phone), $options: "i" } },
+        { sourceUrl: { $regex: String(phone), $options: "i" } },
+        { targetUrl: { $regex: String(phone), $options: "i" } }
+      ];
     }
 
     if (templateId) {
@@ -21,12 +87,25 @@ export const getLogs = async (req, res, next) => {
 
     const parsedLimit = Math.min(Math.max(Number(limit) || 100, 1), 500);
 
-    const logs = await Message.find(filter)
-      .populate("templateId", "name language status")
-      .sort({ createdAt: -1 })
-      .limit(parsedLimit);
+    const [messages, events] = await Promise.all([
+      Message.find(filter)
+        .populate("templateId", "name language status")
+        .sort({ createdAt: -1 })
+        .limit(parsedLimit)
+        .lean(),
+      WebhookEventLog.find(eventFilter)
+        .sort({ createdAt: -1 })
+        .limit(parsedLimit)
+        .lean()
+    ]);
 
-    return res.json(logs);
+    const normalized = [
+      ...messages.map(describeMessageLog),
+      ...events.map(describeWebhookLog)
+    ].sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime())
+      .slice(0, parsedLimit);
+
+    return res.json(normalized);
   } catch (error) {
     return next(error);
   }
@@ -36,10 +115,11 @@ export const getLogStats = async (req, res, next) => {
   try {
     const ownerId = req.user.id;
 
-    const [totalMessages, sentMessages, failedMessages] = await Promise.all([
+    const [totalMessages, sentMessages, failedMessages, webhookEvents] = await Promise.all([
       Message.countDocuments({ ownerId }),
       Message.countDocuments({ ownerId, status: "sent" }),
-      Message.countDocuments({ ownerId, status: "failed" })
+      Message.countDocuments({ ownerId, status: "failed" }),
+      WebhookEventLog.countDocuments({ ownerId })
     ]);
 
     const successRate = totalMessages > 0
@@ -50,6 +130,7 @@ export const getLogStats = async (req, res, next) => {
       totalMessages,
       sentMessages,
       failedMessages,
+      webhookEvents,
       successRate
     });
   } catch (error) {
