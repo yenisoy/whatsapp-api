@@ -35,7 +35,8 @@ Opsiyonel:
 
 - Frontend nginx üzerinden çalışır ve tüm API isteklerini (`/auth`, `/contacts`, `/templates`, `/send`, `/logs`, `/users`, `/webhooks`, `/health`) otomatik olarak backend container'a yönlendirir.
 - `VITE_API_BASE_URL` build-time değişkendir. Boş bırakıldığında relative URL kullanılır (nginx proxy ile çalışır).
-- Webhook URL'si olarak frontend domain'inizi kullanabilirsiniz: `https://<frontend-domain>/webhooks`
+- Webhook URL'si olarak frontend domain'inizi kullanabilirsiniz: `https://<frontend-domain>/webhooks/whatsapp`
+- Kullanıcı bazlı webhook kullanıyorsanız tam yol şu olmalı: `https://<frontend-domain>/webhooks/whatsapp/<webhookPath>`
 
 ## 5) İlk deploy sonrası kontrol
 

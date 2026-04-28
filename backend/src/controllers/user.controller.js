@@ -53,6 +53,8 @@ const sanitizeUser = ({ user, baseUrl = "", webhookBaseUrl = "", includeWebhookT
   mediaUpdatedAt: user.mediaUpdatedAt || null,
   webhookPath: user.webhookPath || "",
   webhookUrl: buildUserWebhookUrl({ baseUrl: webhookBaseUrl, webhookPath: user.webhookPath || "" }),
+  relayWebhookUrl: user.relayWebhookUrl || "",
+  relayWebhookVerifyToken: user.relayWebhookVerifyToken || "",
   ...(includeWebhookToken ? { webhookToken: user.webhookToken || "" } : {}),
   createdAt: user.createdAt,
   updatedAt: user.updatedAt
@@ -136,11 +138,26 @@ export const updateMyProfile = async (req, res, next) => {
     const whatsappToken = String(req.body?.whatsappToken || "").trim();
     const whatsappPhoneId = String(req.body?.whatsappPhoneId || "").trim();
     const whatsappBusinessAccountId = String(req.body?.whatsappBusinessAccountId || "").trim();
+    const relayWebhookUrl = String(req.body?.relayWebhookUrl || "").trim();
+    const relayWebhookVerifyToken = String(req.body?.relayWebhookVerifyToken || "").trim();
     const password = String(req.body?.password || "");
+
+    if (relayWebhookUrl) {
+      try {
+        const parsed = new URL(relayWebhookUrl);
+        if (!["http:", "https:"].includes(parsed.protocol)) {
+          return res.status(400).json({ message: "relayWebhookUrl must use http or https" });
+        }
+      } catch {
+        return res.status(400).json({ message: "relayWebhookUrl must be a valid URL" });
+      }
+    }
 
     user.whatsappToken = whatsappToken;
     user.whatsappPhoneId = whatsappPhoneId;
     user.whatsappBusinessAccountId = whatsappBusinessAccountId;
+    user.relayWebhookUrl = relayWebhookUrl;
+    user.relayWebhookVerifyToken = relayWebhookVerifyToken;
     ensureUserWebhookCredentials(user);
 
     if (password) {
@@ -202,7 +219,9 @@ export const getMyMedia = async (req, res, next) => {
       mediaUpdatedAt: user.mediaUpdatedAt || null,
       webhookPath: user.webhookPath || "",
       webhookToken: user.webhookToken || "",
-      webhookUrl: buildUserWebhookUrl({ baseUrl: webhookBaseUrl, webhookPath: user.webhookPath || "" })
+      webhookUrl: buildUserWebhookUrl({ baseUrl: webhookBaseUrl, webhookPath: user.webhookPath || "" }),
+      relayWebhookUrl: user.relayWebhookUrl || "",
+      relayWebhookVerifyToken: user.relayWebhookVerifyToken || ""
     });
   } catch (error) {
     return next(error);

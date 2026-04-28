@@ -40,6 +40,14 @@ const userSchema = new mongoose.Schema(
       default: "",
       index: true
     },
+    relayWebhookUrl: {
+      type: String,
+      default: ""
+    },
+    relayWebhookVerifyToken: {
+      type: String,
+      default: ""
+    },
     mediaFileName: {
       type: String,
       default: ""

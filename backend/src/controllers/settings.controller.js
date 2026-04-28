@@ -33,11 +33,12 @@ export const updateSettings = async (req, res, next) => {
 
     const settings = await updateWebhookBaseUrl(webhookBaseUrl);
     const requestBaseUrl = getRequestBaseUrl(req);
+    const effectiveWebhookBaseUrl = await getWebhookBaseUrl(requestBaseUrl);
 
     return res.json({
       message: "settings updated",
       webhookBaseUrl: settings.webhookBaseUrl || "",
-      effectiveWebhookBaseUrl: settings.webhookBaseUrl || requestBaseUrl
+      effectiveWebhookBaseUrl
     });
   } catch (error) {
     return next(error);

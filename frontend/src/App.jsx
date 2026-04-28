@@ -148,6 +148,8 @@ function App() { // NOSONAR
     whatsappToken: "",
     whatsappPhoneId: "",
     whatsappBusinessAccountId: "",
+    relayWebhookUrl: "",
+    relayWebhookVerifyToken: "",
     password: ""
   });
   const [profileResult, setProfileResult] = useState("");
@@ -322,6 +324,8 @@ function App() { // NOSONAR
         whatsappToken: user.whatsappToken || "",
         whatsappPhoneId: user.whatsappPhoneId || "",
         whatsappBusinessAccountId: user.whatsappBusinessAccountId || "",
+        relayWebhookUrl: user.relayWebhookUrl || "",
+        relayWebhookVerifyToken: user.relayWebhookVerifyToken || "",
         password: ""
       });
     }
@@ -871,6 +875,8 @@ function App() { // NOSONAR
         whatsappToken: user.whatsappToken || "",
         whatsappPhoneId: user.whatsappPhoneId || "",
         whatsappBusinessAccountId: user.whatsappBusinessAccountId || "",
+        relayWebhookUrl: user.relayWebhookUrl || "",
+        relayWebhookVerifyToken: user.relayWebhookVerifyToken || "",
         password: ""
       });
       setProfileResult("Profil güncellendi");
@@ -1817,6 +1823,16 @@ function App() { // NOSONAR
                   onChange={(event) => setProfileForm({ ...profileForm, whatsappBusinessAccountId: event.target.value })}
                 />
                 <input
+                  placeholder="Relay Webhook URL"
+                  value={profileForm.relayWebhookUrl}
+                  onChange={(event) => setProfileForm({ ...profileForm, relayWebhookUrl: event.target.value })}
+                />
+                <input
+                  placeholder="Relay Verify Token"
+                  value={profileForm.relayWebhookVerifyToken}
+                  onChange={(event) => setProfileForm({ ...profileForm, relayWebhookVerifyToken: event.target.value })}
+                />
+                <input
                   type="password"
                   placeholder="Yeni şifre (opsiyonel)"
                   value={profileForm.password}
@@ -1833,6 +1849,13 @@ function App() { // NOSONAR
                 <div className="row profile-media-actions">
                   <button type="button" className="secondary-action" onClick={onRegenerateWebhookToken}>Token Yenile</button>
                 </div>
+              </div>
+
+              <div className="profile-media-preview" style={{ marginTop: "12px" }}>
+                <span className="template-preview-label">İkinci Webhook Relay</span>
+                <small><strong>Relay URL:</strong> {currentUser?.relayWebhookUrl || "-"}</small>
+                <small><strong>Relay Verify Token:</strong> {currentUser?.relayWebhookVerifyToken || "-"}</small>
+                <small>Meta webhook bize gelir, bu payload relay URL'ye gönderilir.</small>
               </div>
 
               {currentUser?.role === "admin" && (

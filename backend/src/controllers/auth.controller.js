@@ -36,7 +36,9 @@ const serializeUser = (user, baseUrl = "", webhookBaseUrl = "") => ({
   mediaUpdatedAt: user.mediaUpdatedAt || null,
   webhookToken: user.webhookToken || "",
   webhookPath: user.webhookPath || "",
-  webhookUrl: buildUserWebhookUrl({ baseUrl: webhookBaseUrl, webhookPath: user.webhookPath || "" })
+  webhookUrl: buildUserWebhookUrl({ baseUrl: webhookBaseUrl, webhookPath: user.webhookPath || "" }),
+  relayWebhookUrl: user.relayWebhookUrl || "",
+  relayWebhookVerifyToken: user.relayWebhookVerifyToken || ""
 });
 
 export const login = async (req, res, next) => {

@@ -1,6 +1,7 @@
 import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
 import { normalizePhone, upsertConversationByPhone } from "../services/conversation.service.js";
+import { relayWhatsAppWebhook } from "../services/webhook-relay.service.js";
 
 const findWebhookUser = async (webhookPath = "") => {
   const normalizedPath = String(webhookPath || "").trim();
@@ -8,7 +9,7 @@ const findWebhookUser = async (webhookPath = "") => {
     return null;
   }
 
-  return User.findOne({ webhookPath: normalizedPath }).select("_id webhookToken whatsappPhoneId").lean();
+  return User.findOne({ webhookPath: normalizedPath }).select("_id webhookToken whatsappPhoneId relayWebhookUrl relayWebhookVerifyToken").lean();
 };
 
 const extractInboundText = (item = {}) => {
@@ -222,6 +223,23 @@ export const receiveWhatsAppWebhook = async (req, res, next) => {
 
     if (webhookPath && !webhookUser?._id) {
       return res.sendStatus(403);
+    }
+
+    if (webhookUser?.relayWebhookUrl) {
+      try {
+        await relayWhatsAppWebhook({
+          targetUrl: webhookUser.relayWebhookUrl,
+          verifyToken: webhookUser.relayWebhookVerifyToken || "",
+          payload: req.body,
+          sourceHeaders: req.headers
+        });
+      } catch {
+        return res.status(502).json({
+          message: "relay webhook delivery failed"
+        });
+      }
+
+      return res.sendStatus(200);
     }
 
     await updateMessageStatuses(statuses, webhookUser?._id || null);
