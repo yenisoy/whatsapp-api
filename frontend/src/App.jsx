@@ -30,6 +30,34 @@ const compareTemplatesByMetaOrder = (first, second) => {
   return secondLocal - firstLocal;
 };
 
+const truncateText = (value = "", maxLength = 48) => {
+  const text = String(value || "").trim();
+
+  if (!text || text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength).trimEnd()}...`;
+};
+
+const getLogDisplaySource = (log = {}) => {
+  const sourceLabel = String(log.source || "").trim();
+
+  if (sourceLabel) {
+    return sourceLabel;
+  }
+
+  if (log.kind === "message") {
+    if (log.category === "inbound") {
+      return "WhatsApp";
+    }
+
+    return "Sistem";
+  }
+
+  return "-";
+};
+
 const formatLogDate = (value) => {
   if (!value) {
     return "-";
@@ -153,6 +181,7 @@ function App() { // NOSONAR
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState("");
   const [selectedLogDetail, setSelectedLogDetail] = useState(null);
+  const [copiedSourceKey, setCopiedSourceKey] = useState("");
   const [unmatchedWebhookLogs, setUnmatchedWebhookLogs] = useState([]);
   const [unmatchedLogsLoading, setUnmatchedLogsLoading] = useState(false);
   const [unmatchedLogsError, setUnmatchedLogsError] = useState("");
@@ -620,19 +649,27 @@ function App() { // NOSONAR
     );
   });
 
+  const copyLogSource = async (sourceText, sourceKey) => {
+    if (!sourceText || sourceText === "-") {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(sourceText);
+      setCopiedSourceKey(sourceKey);
+    } catch {
+      setCopiedSourceKey("");
+    }
+  };
+
   const logTableRows = logEntries.map((log, idx) => {
     const logKey = log._id || `${log.kind || "log"}-${log.createdAt || idx}`;
     const levelLabel = String(log.level || log.status || "info").toLowerCase();
     const kindLabel = log.kind === "webhook" ? "Webhook" : "Mesaj";
-    let sourceLabel = String(log.source || "").trim();
-    if (!sourceLabel) {
-      if (log.kind === "message") {
-        sourceLabel = log.category === "inbound" ? "WhatsApp" : "Sistem";
-      } else {
-        sourceLabel = "-";
-      }
-    }
+    const displaySource = getLogDisplaySource(log);
+    const shouldTruncateSource = displaySource.length > 44;
     const targetLabel = String(log.target || log.status || "-").trim();
+    const statusLabel = String(log.statusLabel || log.title || log.category || log.status || "").trim();
 
     return (
       <tr key={logKey} className={`log-row level-${levelLabel}`}>
@@ -645,13 +682,28 @@ function App() { // NOSONAR
         <td>
           <div className="log-title-cell">
             <strong>{log.title || "Log"}</strong>
+            {statusLabel && <span className="log-status-label">{statusLabel}</span>}
             <span className="log-category">{String(log.category || log.status || "-")}</span>
           </div>
         </td>
         <td>
           <p className="log-content-cell">{log.content || "-"}</p>
         </td>
-        <td>{sourceLabel}</td>
+        <td>
+          <div className="log-source-cell" title={displaySource}>
+            <span className="log-source-text">{shouldTruncateSource ? truncateText(displaySource) : displaySource}</span>
+            {displaySource !== "-" && (
+              <button
+                type="button"
+                className="log-source-copy-btn"
+                onClick={() => copyLogSource(displaySource, logKey)}
+                title="Kaynağı kopyala"
+              >
+                {copiedSourceKey === logKey ? "Kopyalandı" : "Kopyala"}
+              </button>
+            )}
+          </div>
+        </td>
         <td>{targetLabel}</td>
         <td>
           <span className={`log-pill level-${levelLabel}`}>{levelLabel}</span>

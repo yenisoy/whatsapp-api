@@ -2,6 +2,37 @@ import Message from "../models/message.model.js";
 import UnmatchedWebhookLog from "../models/unmatched-webhook-log.model.js";
 import WebhookEventLog from "../models/webhook-event-log.model.js";
 
+const getMessageStatusLabel = ({ direction = "outbound", status = "" } = {}) => {
+  const normalizedDirection = String(direction || "outbound").toLowerCase();
+  const normalizedStatus = String(status || "").toLowerCase();
+
+  if (normalizedDirection === "inbound") {
+    return "Gelen mesaj";
+  }
+
+  if (normalizedStatus === "read") {
+    return "Okundu";
+  }
+
+  if (normalizedStatus === "delivered") {
+    return "Teslim edildi";
+  }
+
+  if (normalizedStatus === "sent") {
+    return "Gönderildi";
+  }
+
+  if (normalizedStatus === "failed") {
+    return "Başarısız";
+  }
+
+  if (normalizedStatus === "queued") {
+    return "Kuyrukta";
+  }
+
+  return "Mesaj";
+};
+
 const describeMessageLog = (message = {}) => {
   const direction = String(message.direction || "outbound").toLowerCase();
   const status = String(message.status || "").toLowerCase();
@@ -23,7 +54,13 @@ const describeMessageLog = (message = {}) => {
     level = "info";
   }
 
-  const content = body || error || String(message.providerMessageId || "").trim() || "-";
+  const content = status === "failed"
+    ? [
+        error ? `Hata: ${error}` : "Hata: -",
+        body ? `Mesaj: ${body}` : null,
+        String(message.providerMessageId || "").trim() ? `Provider ID: ${String(message.providerMessageId || "").trim()}` : null
+      ].filter(Boolean).join("\n")
+    : body || String(message.providerMessageId || "").trim() || "-";
 
   return {
     _id: String(message._id),
@@ -31,6 +68,7 @@ const describeMessageLog = (message = {}) => {
     category: direction,
     level,
     title,
+    statusLabel: getMessageStatusLabel({ direction, status }),
     content,
     source: direction === "inbound" ? "WhatsApp" : "Sistem",
     target: phone,
