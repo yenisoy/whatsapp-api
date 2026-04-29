@@ -669,7 +669,7 @@ function App() { // NOSONAR
     const displaySource = getLogDisplaySource(log);
     const shouldTruncateSource = displaySource.length > 44;
     const targetLabel = String(log.target || log.status || "-").trim();
-    const statusLabel = String(log.statusLabel || log.title || log.category || log.status || "").trim();
+    const statusLabel = String(log.statusLabel || "").trim();
 
     return (
       <tr key={logKey} className={`log-row level-${levelLabel}`}>
