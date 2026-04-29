@@ -130,7 +130,13 @@ const updateMessageStatuses = async (statuses = [], ownerId = null) => {
 
       const providerStatus = String(item?.status || "").trim().toLowerCase();
       const localStatus = mapProviderStatusToLocalStatus(providerStatus);
-      const providerError = item?.errors?.[0]?.title || item?.errors?.[0]?.message || "";
+      const providerErrors = Array.isArray(item?.errors) ? item.errors : [];
+      const providerError = providerErrors.length
+        ? providerErrors
+          .map((errorItem) => String(errorItem?.title || errorItem?.message || errorItem?.code || "").trim())
+          .filter(Boolean)
+          .join(" | ")
+        : "";
       const updatePayload = {
         providerStatus,
         status: localStatus

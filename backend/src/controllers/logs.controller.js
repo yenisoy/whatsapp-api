@@ -47,7 +47,15 @@ const describeWebhookLog = (event = {}) => ({
   category: String(event.category || "incoming"),
   level: String(event.level || "info"),
   title: event.title || "Webhook olayı",
-  content: event.content || "-",
+  content: event.requestBody
+    ? [
+        `İstek tipi: ${String(event.requestMethod || "POST").trim().toUpperCase()}`,
+        "Gelen veri:",
+        typeof event.requestBody === "string"
+          ? event.requestBody
+          : JSON.stringify(event.requestBody, null, 2)
+      ].join("\n")
+    : event.content || "-",
   source: event.sourceUrl || "-",
   target: event.targetUrl || "-",
   status: event.responseStatus ? String(event.responseStatus) : "-",
