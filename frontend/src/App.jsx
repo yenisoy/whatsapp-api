@@ -152,6 +152,7 @@ function App() { // NOSONAR
   const [logEntries, setLogEntries] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState("");
+  const [selectedLogDetail, setSelectedLogDetail] = useState(null);
   const [unmatchedWebhookLogs, setUnmatchedWebhookLogs] = useState([]);
   const [unmatchedLogsLoading, setUnmatchedLogsLoading] = useState(false);
   const [unmatchedLogsError, setUnmatchedLogsError] = useState("");
@@ -654,6 +655,16 @@ function App() { // NOSONAR
         <td>{targetLabel}</td>
         <td>
           <span className={`log-pill level-${levelLabel}`}>{levelLabel}</span>
+        </td>
+        <td>
+          <button 
+            type="button" 
+            className="log-detail-btn"
+            onClick={() => setSelectedLogDetail(log)}
+            title="Detayları göster"
+          >
+            ◆
+          </button>
         </td>
       </tr>
     );
@@ -1911,6 +1922,7 @@ function App() { // NOSONAR
                     <th>Kaynak</th>
                     <th>Hedef / Durum</th>
                     <th>Seviye</th>
+                    <th>Detay</th>
                   </tr>
                 </thead>
                 <tbody>{logTableRows}</tbody>
@@ -2160,6 +2172,135 @@ function App() { // NOSONAR
             )}
           </div>
         </section>
+      )}
+
+      {selectedLogDetail && (
+        <button 
+          className="modal-overlay" 
+          onClick={() => setSelectedLogDetail(null)}
+          type="button"
+          aria-label="Close modal"
+        >
+          <div 
+            className="modal-content"
+          >
+            <div className="modal-header">
+              <h3>Log Detayları</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSelectedLogDetail(null);
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="detail-grid">
+                <div className="detail-row">
+                  <div className="detail-label">Türü:</div>
+                  <span>{selectedLogDetail.kind === "webhook" ? "Webhook" : "Mesaj"}</span>
+                </div>
+                <div className="detail-row">
+                  <div className="detail-label">Başlık:</div>
+                  <span>{selectedLogDetail.title || "-"}</span>
+                </div>
+                <div className="detail-row">
+                  <div className="detail-label">Kategori:</div>
+                  <span>{selectedLogDetail.category || "-"}</span>
+                </div>
+                <div className="detail-row">
+                  <div className="detail-label">Seviye:</div>
+                  <span>
+                    <span className={`log-pill level-${String(selectedLogDetail.level || "info").toLowerCase()}`}>
+                      {selectedLogDetail.level || "info"}
+                    </span>
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <div className="detail-label">Kaynak:</div>
+                  <span>{selectedLogDetail.source || "-"}</span>
+                </div>
+                <div className="detail-row">
+                  <div className="detail-label">Hedef/Durum:</div>
+                  <span>{selectedLogDetail.target || selectedLogDetail.status || "-"}</span>
+                </div>
+                <div className="detail-row">
+                  <div className="detail-label">Tarih:</div>
+                  <span>{formatLogDate(selectedLogDetail.createdAt)}</span>
+                </div>
+                {selectedLogDetail.sourceUrl && (
+                  <div className="detail-row">
+                    <div className="detail-label">Kaynak URL:</div>
+                    <span className="detail-url">{selectedLogDetail.sourceUrl}</span>
+                  </div>
+                )}
+                {selectedLogDetail.targetUrl && (
+                  <div className="detail-row">
+                    <div className="detail-label">Hedef URL:</div>
+                    <span className="detail-url">{selectedLogDetail.targetUrl}</span>
+                  </div>
+                )}
+                {selectedLogDetail.responseStatus && (
+                  <div className="detail-row">
+                    <div className="detail-label">Yanıt Kodu:</div>
+                    <span>{selectedLogDetail.responseStatus}</span>
+                  </div>
+                )}
+                {selectedLogDetail.requestMethod && (
+                  <div className="detail-row">
+                    <div className="detail-label">İstek Metodu:</div>
+                    <span>{selectedLogDetail.requestMethod}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="detail-section">
+                <h4>İçerik</h4>
+                <div className="detail-content-box">
+                  {selectedLogDetail.content || "İçerik yok"}
+                </div>
+              </div>
+
+              {selectedLogDetail.requestBody && (
+                <div className="detail-section">
+                  <h4>İstek Gövdesi</h4>
+                  <pre className="detail-json">
+                    {typeof selectedLogDetail.requestBody === "string"
+                      ? selectedLogDetail.requestBody
+                      : JSON.stringify(selectedLogDetail.requestBody, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {selectedLogDetail.responseBody && (
+                <div className="detail-section">
+                  <h4>Yanıt Gövdesi</h4>
+                  <pre className="detail-json">
+                    {typeof selectedLogDetail.responseBody === "string"
+                      ? selectedLogDetail.responseBody
+                      : JSON.stringify(selectedLogDetail.responseBody, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSelectedLogDetail(null);
+                }}
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </button>
       )}
     </div>
   );
