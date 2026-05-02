@@ -5,6 +5,14 @@ import { normalizePhone, upsertConversationByPhone } from "../services/conversat
 import { buildWebhookEventSummary, createWebhookEventLog } from "../services/webhook-event-log.service.js";
 import { relayWhatsAppWebhook } from "../services/webhook-relay.service.js";
 
+const isPhoneStatusDebugEnabled = () => String(process.env.PHONE_STATUS_DEBUG || "").trim() === "1";
+
+const phoneStatusDebug = (...args) => {
+  if (isPhoneStatusDebugEnabled()) {
+    console.log(...args);
+  }
+};
+
 const findWebhookUser = async (webhookPath = "") => {
   const normalizedPath = String(webhookPath || "").trim();
   if (!normalizedPath) {
@@ -121,6 +129,12 @@ const extractWebhookPayload = (entries = []) => {
 };
 
 const updateMessageStatuses = async (statuses = [], ownerId = null) => {
+  phoneStatusDebug("[PHONE_STATUS_DEBUG] updateMessageStatuses", {
+    ownerId: ownerId ? String(ownerId) : "",
+    count: Array.isArray(statuses) ? statuses.length : 0,
+    firstIds: Array.isArray(statuses) ? statuses.slice(0, 5).map((item) => String(item?.id || "").trim()).filter(Boolean) : []
+  });
+
   await Promise.all(
     statuses.map(async (item) => {
       const providerMessageId = String(item?.id || "").trim();
@@ -148,11 +162,24 @@ const updateMessageStatuses = async (statuses = [], ownerId = null) => {
 
       const query = ownerId ? { providerMessageId, ownerId } : { providerMessageId };
 
-      await Message.findOneAndUpdate(
+      const updatedMessage = await Message.findOneAndUpdate(
         query,
         updatePayload,
-        { sort: { createdAt: -1 } }
+        { sort: { createdAt: -1 }, new: true }
       );
+
+      phoneStatusDebug("[PHONE_STATUS_DEBUG] updateMessageStatuses:item", {
+        providerMessageId,
+        query: {
+          providerMessageId,
+          ownerId: ownerId ? String(ownerId) : null
+        },
+        providerStatus,
+        localStatus,
+        matched: Boolean(updatedMessage),
+        updatedStatus: updatedMessage?.status || "",
+        updatedProviderStatus: updatedMessage?.providerStatus || ""
+      });
     })
   );
 };
@@ -281,6 +308,13 @@ export const receiveWhatsAppWebhook = async (req, res, next) => {
     const { statuses, incomingMessages } = extractWebhookPayload(entries);
     const webhookPath = String(req.params?.webhookPath || "").trim();
     const webhookUser = await resolveWebhookUser({ webhookPath, entries });
+
+    phoneStatusDebug("[PHONE_STATUS_DEBUG] receiveWhatsAppWebhook", {
+      webhookPath,
+      ownerId: webhookUser?._id ? String(webhookUser._id) : "",
+      statusesCount: statuses.length,
+      incomingBundles: incomingMessages.length
+    });
 
     if (!webhookUser?._id) {
       await UnmatchedWebhookLog.create({
