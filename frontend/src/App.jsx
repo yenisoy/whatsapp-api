@@ -147,6 +147,24 @@ const getContactAvatarStyle = (contact = {}) => {
 };
 
 function App() { // NOSONAR
+  const isPhoneStatusesDebugEnabled = () => {
+    if (import.meta.env.DEV) {
+      return true;
+    }
+
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return window.localStorage?.getItem("wa:phone-statuses-debug") === "1";
+  };
+
+  const phoneStatusesDebug = (...args) => {
+    if (isPhoneStatusesDebugEnabled()) {
+      console.debug(...args);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState("dashboard");
   const [health, setHealth] = useState("checking");
 
@@ -1062,9 +1080,21 @@ function App() { // NOSONAR
     try {
       setPhoneStatusLoading(true);
       setPhoneStatusError("");
+      phoneStatusesDebug("[phone-statuses][ui] load", {
+        query: query.trim(),
+        limit: 1000
+      });
+
       const response = await api.getPhoneStatuses({ q: query.trim(), limit: 1000 });
+      phoneStatusesDebug("[phone-statuses][ui] received", {
+        count: Array.isArray(response) ? response.length : null,
+        firstItem: Array.isArray(response) ? response[0] : response,
+        lastItem: Array.isArray(response) && response.length > 0 ? response[response.length - 1] : null
+      });
+
       setPhoneStatusEntries(Array.isArray(response) ? response : []);
     } catch (error) {
+      phoneStatusesDebug("[phone-statuses][ui] error", error);
       setPhoneStatusError(formatError(error));
     } finally {
       setPhoneStatusLoading(false);
@@ -1074,12 +1104,19 @@ function App() { // NOSONAR
   const onExportPhoneStatuses = async (format = "xlsx") => {
     try {
       setPhoneStatusError("");
+      phoneStatusesDebug("[phone-statuses][ui] export", {
+        format,
+        query: phoneStatusQuery.trim(),
+        limit: 2000
+      });
+
       await api.downloadPhoneStatusesExport({
         format,
         q: phoneStatusQuery.trim(),
         limit: 2000
       });
     } catch (error) {
+      phoneStatusesDebug("[phone-statuses][ui] export error", error);
       setPhoneStatusError(formatError(error));
     }
   };

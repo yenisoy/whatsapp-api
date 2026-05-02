@@ -2,6 +2,24 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 let authToken = "";
 
+const isPhoneStatusesDebugEnabled = () => {
+  if (import.meta.env.DEV) {
+    return true;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage?.getItem("wa:phone-statuses-debug") === "1";
+};
+
+const phoneStatusesDebug = (...args) => {
+  if (isPhoneStatusesDebugEnabled()) {
+    console.debug(...args);
+  }
+};
+
 export const setApiToken = (token) => {
   authToken = token || "";
 };
@@ -356,11 +374,29 @@ export const api = {
     const query = params.toString();
     const suffix = query ? `?${query}` : "";
 
+    phoneStatusesDebug("[phone-statuses][api] request", {
+      url: `${API_BASE_URL}/logs/phone-statuses${suffix}`,
+      query: Object.fromEntries(params.entries())
+    });
+
     const response = await fetch(`${API_BASE_URL}/logs/phone-statuses${suffix}`, {
       headers: buildHeaders()
     });
 
-    return parseResponse(response);
+    phoneStatusesDebug("[phone-statuses][api] response", {
+      status: response.status,
+      ok: response.ok
+    });
+
+    const data = await parseResponse(response);
+
+    phoneStatusesDebug("[phone-statuses][api] payload", {
+      isArray: Array.isArray(data),
+      count: Array.isArray(data) ? data.length : null,
+      firstItem: Array.isArray(data) ? data[0] : data
+    });
+
+    return data;
   },
 
   async downloadPhoneStatusesExport({ format = "xlsx", q = "", limit = 2000 } = {}) {
