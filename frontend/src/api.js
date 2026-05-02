@@ -342,6 +342,27 @@ export const api = {
     return parseResponse(response);
   },
 
+  async getPhoneStatuses(options = {}) {
+    const params = new URLSearchParams();
+
+    if (options?.q) {
+      params.set("q", String(options.q));
+    }
+
+    if (options?.limit) {
+      params.set("limit", String(options.limit));
+    }
+
+    const query = params.toString();
+    const suffix = query ? `?${query}` : "";
+
+    const response = await fetch(`${API_BASE_URL}/logs/phone-statuses${suffix}`, {
+      headers: buildHeaders()
+    });
+
+    return parseResponse(response);
+  },
+
   async getUsers() {
     const response = await fetch(`${API_BASE_URL}/users`, {
       headers: buildHeaders()

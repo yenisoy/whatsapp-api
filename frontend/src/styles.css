@@ -291,6 +291,28 @@ label {
   flex-wrap: wrap;
 }
 
+.phone-status-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.phone-status-table {
+  min-width: 680px;
+}
+
+.phone-status-table td:nth-child(1) {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.phone-status-table td:nth-child(3) {
+  max-width: 380px;
+  color: var(--muted);
+  word-break: break-word;
+}
+
 .logs-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
@@ -1450,6 +1472,10 @@ button:hover {
   }
 
   .search-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .phone-status-toolbar {
     grid-template-columns: 1fr;
   }
 

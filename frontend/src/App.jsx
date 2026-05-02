@@ -74,6 +74,22 @@ const formatLogDate = (value) => {
   }).format(date);
 };
 
+const formatPhoneStatusDate = (value) => {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    dateStyle: "short",
+    timeStyle: "short"
+  }).format(date);
+};
+
 const getApiBaseUrl = () => String(import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
 
 const toPublicMediaUrl = (mediaUrl = "") => {
@@ -180,6 +196,10 @@ function App() { // NOSONAR
   const [logEntries, setLogEntries] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState("");
+  const [phoneStatusEntries, setPhoneStatusEntries] = useState([]);
+  const [phoneStatusLoading, setPhoneStatusLoading] = useState(false);
+  const [phoneStatusError, setPhoneStatusError] = useState("");
+  const [phoneStatusQuery, setPhoneStatusQuery] = useState("");
   const [selectedLogDetail, setSelectedLogDetail] = useState(null);
   const [copiedSourceKey, setCopiedSourceKey] = useState("");
   const [unmatchedWebhookLogs, setUnmatchedWebhookLogs] = useState([]);
@@ -213,7 +233,7 @@ function App() { // NOSONAR
   const [systemWebhookResult, setSystemWebhookResult] = useState("");
 
   const tabs = useMemo(() => {
-    const base = ["dashboard", "contacts", "templates", "send", "chat", "logs", "profile"];
+    const base = ["dashboard", "contacts", "templates", "send", "chat", "phone-statuses", "logs", "profile"];
 
     if (currentUser?.role === "admin") {
       return [...base, "unmatched-logs", "users"];
@@ -361,6 +381,12 @@ function App() { // NOSONAR
       onLoadLogs();
     }
   }, [activeTab, logEntries.length, logsLoading]);
+
+  useEffect(() => {
+    if (activeTab === "phone-statuses" && phoneStatusEntries.length === 0 && !phoneStatusLoading) {
+      onLoadPhoneStatuses();
+    }
+  }, [activeTab, phoneStatusEntries.length, phoneStatusLoading]);
 
   useEffect(() => {
     if (activeTab === "unmatched-logs" && currentUser?.role === "admin" && unmatchedWebhookLogs.length === 0 && !unmatchedLogsLoading) {
@@ -537,6 +563,9 @@ function App() { // NOSONAR
     setGroupSendForm(defaultGroupSendForm);
     setSelectedTags([]);
     setUsers([]);
+    setPhoneStatusEntries([]);
+    setPhoneStatusQuery("");
+    setPhoneStatusError("");
     setSystemWebhookBaseUrl("");
     setSystemWebhookEffectiveUrl("");
     setSystemWebhookResult("");
@@ -735,6 +764,24 @@ function App() { // NOSONAR
         <td>{log.webhookPath || "-"}</td>
         <td>{phoneIds}</td>
         <td>{log.sourceUrl || "-"}</td>
+      </tr>
+    );
+  });
+
+  const phoneStatusRows = phoneStatusEntries.map((item, idx) => {
+    const rowKey = item._id || `${item.phone || "phone"}-${item.updatedAt || idx}`;
+    const normalizedStatus = String(item.status || "queued").toLowerCase();
+
+    return (
+      <tr key={rowKey}>
+        <td>{item.phone || "-"}</td>
+        <td>
+          <span className={`log-pill level-${normalizedStatus === "failed" ? "error" : "success"}`}>
+            {item.statusLabelTr || "-"}
+          </span>
+        </td>
+        <td>{item.descriptionTr || "-"}</td>
+        <td>{formatPhoneStatusDate(item.updatedAt || item.createdAt)}</td>
       </tr>
     );
   });
@@ -1009,6 +1056,36 @@ function App() { // NOSONAR
     } finally {
       setUnmatchedLogsLoading(false);
     }
+  };
+
+  const onLoadPhoneStatuses = async (query = phoneStatusQuery) => {
+    try {
+      setPhoneStatusLoading(true);
+      setPhoneStatusError("");
+      const response = await api.getPhoneStatuses({ q: query.trim(), limit: 1000 });
+      setPhoneStatusEntries(Array.isArray(response) ? response : []);
+    } catch (error) {
+      setPhoneStatusError(formatError(error));
+    } finally {
+      setPhoneStatusLoading(false);
+    }
+  };
+
+  const getTabLabel = (tab) => {
+    const labels = {
+      dashboard: "DASHBOARD",
+      contacts: "CONTACTS",
+      templates: "TEMPLATES",
+      send: "SEND",
+      chat: "CHAT",
+      "phone-statuses": "NUMARA DURUMLARI",
+      logs: "LOGS",
+      profile: "PROFILE",
+      "unmatched-logs": "UNMATCHED LOGS",
+      users: "USERS"
+    };
+
+    return labels[tab] || String(tab || "").toUpperCase();
   };
 
   const onCreateUser = async (event) => {
@@ -1349,7 +1426,7 @@ function App() { // NOSONAR
             className={activeTab === tab ? "tab active" : "tab"}
             onClick={() => setActiveTab(tab)}
           >
-            {tab.toUpperCase()}
+            {getTabLabel(tab)}
           </button>
         ))}
       </nav>
@@ -1947,6 +2024,65 @@ function App() { // NOSONAR
 
       {activeTab === "chat" && (
         <ChatPanel />
+      )}
+
+      {activeTab === "phone-statuses" && (
+        <section className="panel logs-panel">
+          <div className="logs-header">
+            <div>
+              <h2>Numara Durumları</h2>
+              <p className="section-caption">Mesaj gönderilen numaraların WhatsApp webhooktan gelen en güncel durumları.</p>
+            </div>
+            <button type="button" onClick={() => onLoadPhoneStatuses()} disabled={phoneStatusLoading}>
+              {phoneStatusLoading ? "Yükleniyor..." : "Durumları Getir"}
+            </button>
+          </div>
+
+          <div className="row phone-status-toolbar">
+            <input
+              placeholder="Telefon ara (örn: 90539...)"
+              value={phoneStatusQuery}
+              onChange={(event) => setPhoneStatusQuery(event.target.value)}
+            />
+            <button type="button" className="secondary-action" onClick={() => onLoadPhoneStatuses(phoneStatusQuery)} disabled={phoneStatusLoading}>
+              Ara
+            </button>
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => {
+                setPhoneStatusQuery("");
+                onLoadPhoneStatuses("");
+              }}
+              disabled={phoneStatusLoading && !phoneStatusQuery}
+            >
+              Temizle
+            </button>
+          </div>
+
+          {phoneStatusError && <p className="info">{phoneStatusError}</p>}
+
+          {phoneStatusEntries.length > 0 ? (
+            <div className="logs-table-wrap">
+              <table className="logs-table phone-status-table">
+                <thead>
+                  <tr>
+                    <th>Telefon</th>
+                    <th>Son Durum</th>
+                    <th>Açıklama</th>
+                    <th>Güncellenme</th>
+                  </tr>
+                </thead>
+                <tbody>{phoneStatusRows}</tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="empty-state">
+              <h4>Durum kaydı bulunamadı</h4>
+              <p>Mesaj gönderimleri ve WhatsApp status webhookları geldikçe burada listelenecek.</p>
+            </div>
+          )}
+        </section>
       )}
 
       {activeTab === "logs" && (

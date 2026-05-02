@@ -1,4 +1,5 @@
 import Message from "../models/message.model.js";
+import mongoose from "mongoose";
 import UnmatchedWebhookLog from "../models/unmatched-webhook-log.model.js";
 import WebhookEventLog from "../models/webhook-event-log.model.js";
 
@@ -102,6 +103,56 @@ const describeWebhookLog = (event = {}) => ({
   raw: event
 });
 
+const toTurkishStatus = (status = "") => {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+
+  if (normalizedStatus === "sent") {
+    return "Mesaj gönderildi";
+  }
+
+  if (normalizedStatus === "delivered") {
+    return "Mesaj teslim edildi";
+  }
+
+  if (normalizedStatus === "read") {
+    return "Mesaj okundu";
+  }
+
+  if (normalizedStatus === "failed") {
+    return "Hata";
+  }
+
+  if (normalizedStatus === "queued") {
+    return "Kuyrukta";
+  }
+
+  return "Bilinmiyor";
+};
+
+const buildStatusDescription = ({ status = "", error = "", providerStatus = "" } = {}) => {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  const normalizedError = String(error || "").trim();
+  const normalizedProviderStatus = String(providerStatus || "").trim().toLowerCase();
+
+  if (normalizedStatus === "failed") {
+    if (normalizedError) {
+      return normalizedError;
+    }
+
+    if (normalizedProviderStatus) {
+      return `WhatsApp hata durumu: ${normalizedProviderStatus}`;
+    }
+
+    return "WhatsApp gönderimi başarısız oldu.";
+  }
+
+  if (normalizedProviderStatus) {
+    return `Son webhook durumu: ${normalizedProviderStatus}`;
+  }
+
+  return "-";
+};
+
 export const getLogs = async (req, res, next) => {
   try {
     const { status, phone, templateId, limit = 100 } = req.query;
@@ -196,6 +247,96 @@ export const getUnmatchedWebhookLogs = async (req, res, next) => {
       .lean();
 
     return res.json(logs);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const getLatestPhoneStatuses = async (req, res, next) => {
+  try {
+    const ownerId = String(req.user.id || "").trim();
+    const ownerObjectId = new mongoose.Types.ObjectId(ownerId);
+    const { q = "", limit = 500 } = req.query;
+
+    const parsedLimit = Math.min(Math.max(Number(limit) || 500, 1), 2000);
+    const phoneQuery = String(q || "").trim();
+
+    const filter = {
+      ownerId: ownerObjectId,
+      direction: "outbound"
+    };
+
+    if (phoneQuery) {
+      filter.phone = { $regex: phoneQuery, $options: "i" };
+    }
+
+    const latestPerPhone = await Message.aggregate([
+      {
+        $match: filter
+      },
+      {
+        $sort: {
+          updatedAt: -1,
+          createdAt: -1
+        }
+      },
+      {
+        $group: {
+          _id: "$phone",
+          latest: { $first: "$$ROOT" }
+        }
+      },
+      {
+        $replaceRoot: {
+          newRoot: "$latest"
+        }
+      },
+      {
+        $sort: {
+          updatedAt: -1,
+          createdAt: -1
+        }
+      },
+      {
+        $limit: parsedLimit
+      },
+      {
+        $project: {
+          _id: 1,
+          phone: 1,
+          status: 1,
+          providerStatus: 1,
+          error: 1,
+          updatedAt: 1,
+          createdAt: 1,
+          providerMessageId: 1
+        }
+      }
+    ]);
+
+    const response = latestPerPhone.map((item) => {
+      const status = String(item?.status || "").trim().toLowerCase();
+      const providerStatus = String(item?.providerStatus || "").trim().toLowerCase();
+      const effectiveStatus = providerStatus || status;
+
+      return {
+        _id: String(item?._id || ""),
+        phone: String(item?.phone || "").trim(),
+        status: effectiveStatus || "queued",
+        statusLabelTr: toTurkishStatus(effectiveStatus || "queued"),
+        descriptionTr: buildStatusDescription({
+          status: effectiveStatus || "queued",
+          error: item?.error || "",
+          providerStatus
+        }),
+        error: String(item?.error || "").trim(),
+        providerMessageId: String(item?.providerMessageId || "").trim(),
+        updatedAt: item?.updatedAt,
+        createdAt: item?.createdAt
+      };
+    });
+
+    return res.json(response);
   } catch (error) {
     return next(error);
   }
