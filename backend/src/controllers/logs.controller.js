@@ -1,7 +1,19 @@
 import Message from "../models/message.model.js";
 import mongoose from "mongoose";
+import xlsx from "xlsx";
 import UnmatchedWebhookLog from "../models/unmatched-webhook-log.model.js";
 import WebhookEventLog from "../models/webhook-event-log.model.js";
+
+const phoneStatusExportHeaders = ["phone", "status", "statusLabelTr", "descriptionTr", "updatedAt", "providerMessageId"];
+
+const escapeCsvValue = (value = "") => {
+  const normalized = String(value ?? "");
+  if (!/[",\n]/.test(normalized)) {
+    return normalized;
+  }
+
+  return `"${normalized.replaceAll("\"", "\"\"")}"`;
+};
 
 const getMessageStatusLabel = ({ direction = "outbound", status = "" } = {}) => {
   const normalizedDirection = String(direction || "outbound").toLowerCase();
@@ -153,6 +165,105 @@ const buildStatusDescription = ({ status = "", error = "", providerStatus = "" }
   return "-";
 };
 
+const toLocalStatusFromProvider = (providerStatus = "") => {
+  const normalized = String(providerStatus || "").trim().toLowerCase();
+
+  if (["sent", "delivered", "read", "failed", "queued"].includes(normalized)) {
+    return normalized;
+  }
+
+  if (["accepted", "held_for_quality_assessment", "pending"].includes(normalized)) {
+    return "queued";
+  }
+
+  if (["undeliverable", "deleted"].includes(normalized)) {
+    return "failed";
+  }
+
+  return "";
+};
+
+const findLatestPhoneStatuses = async ({ ownerId = "", q = "", limit = 500 } = {}) => {
+  const ownerObjectId = new mongoose.Types.ObjectId(String(ownerId || "").trim());
+  const parsedLimit = Math.min(Math.max(Number(limit) || 500, 1), 2000);
+  const phoneQuery = String(q || "").trim();
+
+  const filter = {
+    ownerId: ownerObjectId,
+    direction: "outbound"
+  };
+
+  if (phoneQuery) {
+    filter.phone = { $regex: phoneQuery, $options: "i" };
+  }
+
+  const latestPerPhone = await Message.aggregate([
+    {
+      $match: filter
+    },
+    {
+      $sort: {
+        updatedAt: -1,
+        createdAt: -1
+      }
+    },
+    {
+      $group: {
+        _id: "$phone",
+        latest: { $first: "$$ROOT" }
+      }
+    },
+    {
+      $replaceRoot: {
+        newRoot: "$latest"
+      }
+    },
+    {
+      $sort: {
+        updatedAt: -1,
+        createdAt: -1
+      }
+    },
+    {
+      $limit: parsedLimit
+    },
+    {
+      $project: {
+        _id: 1,
+        phone: 1,
+        status: 1,
+        providerStatus: 1,
+        error: 1,
+        updatedAt: 1,
+        createdAt: 1,
+        providerMessageId: 1
+      }
+    }
+  ]);
+
+  return latestPerPhone.map((item) => {
+    const status = String(item?.status || "").trim().toLowerCase();
+    const providerStatus = String(item?.providerStatus || "").trim().toLowerCase();
+    const effectiveStatus = status || toLocalStatusFromProvider(providerStatus) || "queued";
+
+    return {
+      _id: String(item?._id || ""),
+      phone: String(item?.phone || "").trim(),
+      status: effectiveStatus,
+      statusLabelTr: toTurkishStatus(effectiveStatus),
+      descriptionTr: buildStatusDescription({
+        status: effectiveStatus,
+        error: item?.error || "",
+        providerStatus
+      }),
+      error: String(item?.error || "").trim(),
+      providerMessageId: String(item?.providerMessageId || "").trim(),
+      updatedAt: item?.updatedAt,
+      createdAt: item?.createdAt
+    };
+  });
+};
+
 export const getLogs = async (req, res, next) => {
   try {
     const { status, phone, templateId, limit = 100 } = req.query;
@@ -254,89 +365,74 @@ export const getUnmatchedWebhookLogs = async (req, res, next) => {
 
 export const getLatestPhoneStatuses = async (req, res, next) => {
   try {
-    const ownerId = String(req.user.id || "").trim();
-    const ownerObjectId = new mongoose.Types.ObjectId(ownerId);
     const { q = "", limit = 500 } = req.query;
-
-    const parsedLimit = Math.min(Math.max(Number(limit) || 500, 1), 2000);
-    const phoneQuery = String(q || "").trim();
-
-    const filter = {
-      ownerId: ownerObjectId,
-      direction: "outbound"
-    };
-
-    if (phoneQuery) {
-      filter.phone = { $regex: phoneQuery, $options: "i" };
-    }
-
-    const latestPerPhone = await Message.aggregate([
-      {
-        $match: filter
-      },
-      {
-        $sort: {
-          updatedAt: -1,
-          createdAt: -1
-        }
-      },
-      {
-        $group: {
-          _id: "$phone",
-          latest: { $first: "$$ROOT" }
-        }
-      },
-      {
-        $replaceRoot: {
-          newRoot: "$latest"
-        }
-      },
-      {
-        $sort: {
-          updatedAt: -1,
-          createdAt: -1
-        }
-      },
-      {
-        $limit: parsedLimit
-      },
-      {
-        $project: {
-          _id: 1,
-          phone: 1,
-          status: 1,
-          providerStatus: 1,
-          error: 1,
-          updatedAt: 1,
-          createdAt: 1,
-          providerMessageId: 1
-        }
-      }
-    ]);
-
-    const response = latestPerPhone.map((item) => {
-      const status = String(item?.status || "").trim().toLowerCase();
-      const providerStatus = String(item?.providerStatus || "").trim().toLowerCase();
-      const effectiveStatus = providerStatus || status;
-
-      return {
-        _id: String(item?._id || ""),
-        phone: String(item?.phone || "").trim(),
-        status: effectiveStatus || "queued",
-        statusLabelTr: toTurkishStatus(effectiveStatus || "queued"),
-        descriptionTr: buildStatusDescription({
-          status: effectiveStatus || "queued",
-          error: item?.error || "",
-          providerStatus
-        }),
-        error: String(item?.error || "").trim(),
-        providerMessageId: String(item?.providerMessageId || "").trim(),
-        updatedAt: item?.updatedAt,
-        createdAt: item?.createdAt
-      };
+    const response = await findLatestPhoneStatuses({
+      ownerId: req.user.id,
+      q,
+      limit
     });
 
     return res.json(response);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const exportLatestPhoneStatuses = async (req, res, next) => {
+  try {
+    const format = String(req.query.format || "xlsx").toLowerCase();
+    const response = await findLatestPhoneStatuses({
+      ownerId: req.user.id,
+      q: req.query.q,
+      limit: req.query.limit || 2000
+    });
+
+    const rows = response.map((item) => ({
+      phone: item.phone,
+      status: item.status,
+      statusLabelTr: item.statusLabelTr,
+      descriptionTr: item.descriptionTr,
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "",
+      providerMessageId: item.providerMessageId
+    }));
+
+    if (format === "xlsx" || format === "xls") {
+      const workbook = xlsx.utils.book_new();
+      const worksheet = xlsx.utils.json_to_sheet(rows, {
+        header: phoneStatusExportHeaders
+      });
+      xlsx.utils.book_append_sheet(workbook, worksheet, "phone_statuses");
+
+      const buffer = xlsx.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx"
+      });
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=phone-statuses-export.xlsx"
+      );
+
+      return res.status(200).send(buffer);
+    }
+
+    const csvHeader = `${phoneStatusExportHeaders.join(",")}\n`;
+    const csvBody = rows
+      .map((row) => phoneStatusExportHeaders.map((header) => escapeCsvValue(row[header])).join(","))
+      .join("\n");
+    const csvContent = `${csvHeader}${csvBody}${rows.length ? "\n" : ""}`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=phone-statuses-export.csv"
+    );
+
+    return res.status(200).send(csvContent);
   } catch (error) {
     return next(error);
   }

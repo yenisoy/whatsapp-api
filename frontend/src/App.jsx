@@ -1071,6 +1071,19 @@ function App() { // NOSONAR
     }
   };
 
+  const onExportPhoneStatuses = async (format = "xlsx") => {
+    try {
+      setPhoneStatusError("");
+      await api.downloadPhoneStatusesExport({
+        format,
+        q: phoneStatusQuery.trim(),
+        limit: 2000
+      });
+    } catch (error) {
+      setPhoneStatusError(formatError(error));
+    }
+  };
+
   const getTabLabel = (tab) => {
     const labels = {
       dashboard: "DASHBOARD",
@@ -2033,9 +2046,14 @@ function App() { // NOSONAR
               <h2>Numara Durumları</h2>
               <p className="section-caption">Mesaj gönderilen numaraların WhatsApp webhooktan gelen en güncel durumları.</p>
             </div>
-            <button type="button" onClick={() => onLoadPhoneStatuses()} disabled={phoneStatusLoading}>
-              {phoneStatusLoading ? "Yükleniyor..." : "Durumları Getir"}
-            </button>
+            <div className="row">
+              <button type="button" className="secondary-action" onClick={() => onExportPhoneStatuses("xlsx")} disabled={phoneStatusLoading || phoneStatusEntries.length === 0}>
+                Excel Dışa Aktar
+              </button>
+              <button type="button" onClick={() => onLoadPhoneStatuses()} disabled={phoneStatusLoading}>
+                {phoneStatusLoading ? "Yükleniyor..." : "Durumları Getir"}
+              </button>
+            </div>
           </div>
 
           <div className="row phone-status-toolbar">

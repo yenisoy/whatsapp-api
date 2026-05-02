@@ -363,6 +363,55 @@ export const api = {
     return parseResponse(response);
   },
 
+  async downloadPhoneStatusesExport({ format = "xlsx", q = "", limit = 2000 } = {}) {
+    const params = new URLSearchParams();
+    params.set("format", format);
+
+    if (q) {
+      params.set("q", q);
+    }
+
+    if (limit) {
+      params.set("limit", String(limit));
+    }
+
+    const response = await fetch(`${API_BASE_URL}/logs/phone-statuses/export?${params.toString()}`, {
+      headers: buildHeaders()
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      let message = `Request failed with ${response.status}`;
+
+      if (text) {
+        try {
+          const data = JSON.parse(text);
+          message = data?.message || message;
+        } catch {
+          message = text;
+        }
+      }
+
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get("content-disposition") || "";
+    const fileNameMatch = /filename=([^;]+)/i.exec(contentDisposition);
+    const fileName = fileNameMatch?.[1]?.replaceAll('"', "") || `phone-statuses-export.${format === "xlsx" || format === "xls" ? "xlsx" : "csv"}`;
+
+    const downloadUrl = globalThis.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    globalThis.URL.revokeObjectURL(downloadUrl);
+
+    return true;
+  },
+
   async getUsers() {
     const response = await fetch(`${API_BASE_URL}/users`, {
       headers: buildHeaders()
