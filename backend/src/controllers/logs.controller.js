@@ -183,6 +183,119 @@ const toLocalStatusFromProvider = (providerStatus = "") => {
   return "";
 };
 
+const parseJsonMaybe = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === "object") {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const extractWebhookStatusRows = (requestBody) => {
+  const payload = parseJsonMaybe(requestBody);
+  const entries = Array.isArray(payload?.entry) ? payload.entry : [];
+
+  return entries.flatMap((entry) => {
+    const changes = Array.isArray(entry?.changes) ? entry.changes : [];
+
+    return changes.flatMap((change) => {
+      const statuses = Array.isArray(change?.value?.statuses) ? change.value.statuses : [];
+
+      return statuses.map((item) => {
+        const providerStatus = String(item?.status || "").trim().toLowerCase();
+        const phone = String(item?.recipient_id || item?.wa_id || "").trim();
+
+        return {
+          phone,
+          providerStatus,
+          providerMessageId: String(item?.id || "").trim(),
+          updatedAt: item?.timestamp ? new Date(Number(item.timestamp) * 1000) : null
+        };
+      }).filter((item) => item.phone);
+    });
+  });
+};
+
+const findLatestPhoneStatusesFromLogs = async ({ ownerId = "", q = "", limit = 500 } = {}) => {
+  const ownerObjectId = new mongoose.Types.ObjectId(String(ownerId || "").trim());
+  const parsedLimit = Math.min(Math.max(Number(limit) || 500, 1), 2000);
+  const phoneQuery = String(q || "").trim();
+
+  const logFilter = {
+    ownerId: ownerObjectId,
+    title: "Meta webhook alındı"
+  };
+
+  if (phoneQuery) {
+    logFilter.$or = [
+      { content: { $regex: phoneQuery, $options: "i" } },
+      { sourceUrl: { $regex: phoneQuery, $options: "i" } },
+      { targetUrl: { $regex: phoneQuery, $options: "i" } }
+    ];
+  }
+
+  const logs = await WebhookEventLog.find(logFilter)
+    .sort({ createdAt: -1 })
+    .limit(parsedLimit)
+    .lean();
+
+  const latestByPhone = new Map();
+
+  logs.forEach((log) => {
+    const rows = extractWebhookStatusRows(log.requestBody);
+
+    rows.forEach((row) => {
+      if (!row.phone) {
+        return;
+      }
+
+      if (phoneQuery && !row.phone.includes(phoneQuery)) {
+        return;
+      }
+
+      const current = latestByPhone.get(row.phone);
+      const nextTime = new Date(log.createdAt || row.updatedAt || 0).getTime();
+      const currentTime = current ? new Date(current.updatedAt || current.createdAt || 0).getTime() : -1;
+
+      if (!current || nextTime >= currentTime) {
+        const effectiveStatus = toLocalStatusFromProvider(row.providerStatus) || "queued";
+
+        latestByPhone.set(row.phone, {
+          _id: String(log._id || ""),
+          phone: row.phone,
+          status: effectiveStatus,
+          statusLabelTr: toTurkishStatus(effectiveStatus),
+          descriptionTr: buildStatusDescription({
+            status: effectiveStatus,
+            providerStatus: row.providerStatus
+          }),
+          error: "",
+          providerMessageId: row.providerMessageId,
+          updatedAt: row.updatedAt || log.createdAt,
+          createdAt: log.createdAt,
+          sourceTitle: log.title || "Meta webhook alındı"
+        });
+      }
+    });
+  });
+
+  return Array.from(latestByPhone.values())
+    .sort((first, second) => new Date(second.updatedAt || second.createdAt || 0).getTime() - new Date(first.updatedAt || first.createdAt || 0).getTime())
+    .slice(0, parsedLimit);
+};
+
 const findLatestPhoneStatuses = async ({ ownerId = "", q = "", limit = 500 } = {}) => {
   const ownerObjectId = new mongoose.Types.ObjectId(String(ownerId || "").trim());
   const parsedLimit = Math.min(Math.max(Number(limit) || 500, 1), 2000);
@@ -366,7 +479,7 @@ export const getUnmatchedWebhookLogs = async (req, res, next) => {
 export const getLatestPhoneStatuses = async (req, res, next) => {
   try {
     const { q = "", limit = 500 } = req.query;
-    const response = await findLatestPhoneStatuses({
+    const response = await findLatestPhoneStatusesFromLogs({
       ownerId: req.user.id,
       q,
       limit
@@ -381,7 +494,7 @@ export const getLatestPhoneStatuses = async (req, res, next) => {
 export const exportLatestPhoneStatuses = async (req, res, next) => {
   try {
     const format = String(req.query.format || "xlsx").toLowerCase();
-    const response = await findLatestPhoneStatuses({
+    const response = await findLatestPhoneStatusesFromLogs({
       ownerId: req.user.id,
       q: req.query.q,
       limit: req.query.limit || 2000
