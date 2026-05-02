@@ -305,6 +305,8 @@ export const receiveWhatsAppWebhook = async (req, res, next) => {
       requestBody: req.body
     });
 
+    await updateMessageStatuses(statuses, webhookUser?._id || null);
+
     if (webhookUser?.relayWebhookUrl) {
       try {
         const relayResult = await relayWhatsAppWebhook({
@@ -347,7 +349,6 @@ export const receiveWhatsAppWebhook = async (req, res, next) => {
       return res.sendStatus(200);
     }
 
-    await updateMessageStatuses(statuses, webhookUser?._id || null);
     await processIncomingMessages(incomingMessages, webhookUser);
 
     if (webhookUser?._id) {
