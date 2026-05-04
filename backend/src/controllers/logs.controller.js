@@ -216,11 +216,26 @@ const extractWebhookStatusRows = (requestBody) => {
       return statuses.map((item) => {
         const providerStatus = String(item?.status || "").trim().toLowerCase();
         const phone = String(item?.recipient_id || item?.wa_id || "").trim();
+        
+        // Extract error information from webhook payload
+        let errorMessage = "";
+        if (Array.isArray(item?.errors) && item.errors.length > 0) {
+          const errorDetails = item.errors.map((err) => {
+            if (err?.message) return err.message;
+            if (err?.title) return err.title;
+            return String(err || "");
+          }).filter(Boolean);
+          
+          if (errorDetails.length > 0) {
+            errorMessage = errorDetails.join(", ");
+          }
+        }
 
         return {
           phone,
           providerStatus,
           providerMessageId: String(item?.id || "").trim(),
+          error: errorMessage,
           updatedAt: item?.timestamp ? new Date(Number(item.timestamp) * 1000) : null
         };
       }).filter((item) => item.phone);
@@ -279,9 +294,10 @@ const findLatestPhoneStatusesFromLogs = async ({ ownerId = "", q = "", limit = 5
           statusLabelTr: toTurkishStatus(effectiveStatus),
           descriptionTr: buildStatusDescription({
             status: effectiveStatus,
+            error: row.error || "",
             providerStatus: row.providerStatus
           }),
-          error: "",
+          error: row.error || "",
           providerMessageId: row.providerMessageId,
           updatedAt: row.updatedAt || log.createdAt,
           createdAt: log.createdAt,
